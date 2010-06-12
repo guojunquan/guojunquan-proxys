@@ -33,7 +33,8 @@ class HttpGfwProxyDispatcher (HttpAction):
         with open (gfwpath, 'w+') as gfwfile:
             gfwfile.write ('\n'.join (self.gfwlist))
     
-    def gfw_append (self, h): if h not in self.gfwlist: self.gfwlist.append (h)
+    def gfw_append (self, h):
+        if h not in self.gfwlist: self.gfwlist.append (h)
 
     def gfw_check (self, h):
         for g in self.gfwlist:
