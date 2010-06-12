@@ -6,7 +6,7 @@ ADDONS=lrucache.pyo socks.pyo
 DESTDIR=
 perfix=$(DESTDIR)/usr
 BINDIR=$(perfix)/bin
-LIBDIR=$(perfix)/lib/pyshared/python2.5/pyproxy
+LIBDIR=$(perfix)/lib/pyshared/python2.5/pywebproxy
 
 %.pyo: %.py
 	python -O -c "import $(basename $^)"
@@ -29,10 +29,10 @@ clean:
 	rm -rf *.pyc *.pyo
 
 test: build
-	./pyproxy test
+	./pywebproxy test
 
 install: build
 	$(INSTALL) -d $(BINDIR)
-	$(INSTALL) -m 755 pyproxy $(BINDIR)
+	$(INSTALL) -m 755 pywebproxy $(BINDIR)
 	$(INSTALL) -d $(LIBDIR)
 	$(INSTALL) -m 644 -t $(LIBDIR) $(OBJECTS) $(ACTIONS) $(ADDONS)

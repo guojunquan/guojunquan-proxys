@@ -150,7 +150,7 @@ del</a></td></tr>' % (hostname, hostname))
         return request.make_redirect ('/gfwlist')
     url_map['/gfwsave'] = action_gfwsave
 
-    def action_gfwsave (self, request):
+    def action_gfwload (self, request):
         self.loadgfw (None)
         return request.make_redirect ('/gfwlist')
-    url_map['/gfwsave'] = action_gfwsave
+    url_map['/gfwload'] = action_gfwload
