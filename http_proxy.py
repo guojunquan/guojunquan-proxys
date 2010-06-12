@@ -32,6 +32,7 @@ class TcpSocksClient (TcpEventletClient):
         if len (hostinfo[1]) == 0: port = 80
         else: port = int (hostinfo[2])
         self.caddr = (hostinfo[0], port)
+        self.sock.setproxy (**kargs)
         self.sock.connect (self.caddr)
 
 class HttpProxyResponse (HttpResponse):
