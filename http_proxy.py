@@ -29,9 +29,10 @@ class TcpSocksClient (TcpEventletClient):
         '''
         self.sock = socks.socksocket (socket.AF_INET, socket.SOCK_STREAM)
         hostinfo = hostname.partition (':')
-        port = int (hostinfo[2]) if len (hostinfo[1]) != 0 else 80
-        self.sock.setproxy (**kargs)
-        self.sock.connect ((hostinfo[0], port))
+        if len (hostinfo[1]) == 0: port = 80
+        else: port = int (hostinfo[2])
+        self.caddr = (hostinfo[0], port)
+        self.sock.connect (self.caddr)
 
 class HttpProxyResponse (HttpResponse):
     MAX_CACHE = 16 * 1024
@@ -45,6 +46,8 @@ class HttpProxyResponse (HttpResponse):
         else: self.phrase = self.DEFAULT_PAGES[self.code][0]
         if int (self.get ('Content-Length', '1')) < self.MAX_CACHE:
             self.cache = True
+        if self.get ('Transfer-Encoding', None) == 'chunked':
+            self.chunk_mode = True
 
     def check_hasbody (self):
         if self.request.verb == 'HEAD': return False
@@ -55,16 +58,10 @@ class HttpProxyResponse (HttpResponse):
         return True
 
     def append_body (self, data):
-        if self.chunk_mode:
-            self.socks[1].sendall ('%x\r\n%s\r\n' % (len (data), data))
-        else: self.socks[1].sendall (data)
+        if not self.chunk_mode: self.socks[1].sendall (data)
+        else: self.socks[1].sendall ('%x\r\n%s\r\n' % (len (data), data))
         self.request.proxy_count[1] += len (data)
         if self.cache: super (HttpProxyResponse, self).append_body (data)
-
-    def end_body (self):
-        super (HttpProxyResponse, self).end_body ()
-        if self.chunk_mode: self.socks[1].sendall ('0\r\n\r\n')
-        self.body_sended = True
 
 class HttpProxyAction (HttpAction):
     name = 'proxy'
@@ -96,6 +93,7 @@ class HttpProxyAction (HttpAction):
         response.socks.reverse ()
         try: response.recv_body ()
         finally: response.socks.reverse ()
+        response.body_sended = True
         return response, response.get ('Connection', 'close').lower () == 'close'
 
     def action_connect (self, request):
@@ -119,7 +117,7 @@ class HttpProxyAction (HttpAction):
                     if hasattr (request, 'timeout'): request.timeout.cancel ()
                     s = request.socks
                     s[0].pump ([[s[0], s[1], 0], [s[1], s[0], 1],],
-                               request, request.proxy_count)
+                               request.threads, request.proxy_count)
                     response.connection, response.body_sended = False, True
                 else:
                     self.send_request (request)
