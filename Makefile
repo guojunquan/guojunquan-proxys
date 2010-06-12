@@ -24,6 +24,7 @@ updatecgi:
 downcgi:
 	scp shhawk:~/www/cgi-bin/test.py cgi.py
 
+#clean up
 clean:
 	rm -rf *.pyc *.pyo
 
