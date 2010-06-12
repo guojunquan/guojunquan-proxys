@@ -149,6 +149,11 @@ class HttpResponse (HttpMessage):
         self.socks[0].sendall (self.make_header ())
         self.header_sended = True
 
+    def send_one_body (self, data):
+        if self.body_sended: return
+        if not self.chunk_mode: self.socks[0].sendall (data)
+        else: self.socks[0].sendall ('%x\r\n%s\r\n' % (len (data), data))
+
     def send_body (self):
         if self.body_sended: return
         if not self.chunk_mode: self.socks[0].sendall (''.join (self.content))

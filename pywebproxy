@@ -4,12 +4,9 @@
 # @author: shell.xu
 import sys
 import socks
-import socket
 import logging
-import cProfile
 import eventlet.backdoor
 import eventlet.debug
-from os import path
 
 import log
 from base import DummyConnPool
