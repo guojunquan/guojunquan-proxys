@@ -13,7 +13,7 @@ from base import DummyConnPool
 from server import HttpServer, TcpEventletClient, EventletConnPool
 from http_filter import HttpGfwProxyDispatcher
 from http_cache import HttpCacheFilter
-from http_proxy import TcpSocksClient, HttpProxyAction, HttpProxyForwardAction
+from http_proxy import HttpProxyAction, HttpProxyForwardAction
 from http_hoh import HttpOverHttpProxy
 
 class Proxy (object):
@@ -36,7 +36,7 @@ class Proxy (object):
     def addsocks (self, **kargs):
         if 'rdns' not in kargs: kargs['rdns'] = True
         if 'proxytype' not in kargs: kargs['proxytype'] = socks.PROXY_TYPE_SOCKS5
-        pool = DummyConnPool (factory = TcpSocksClient, kargs = kargs)
+        pool = DummyConnPool (factory = socks.TcpSocksClient, kargs = kargs)
         sockproxy = HttpProxyAction (pool)
         sockproxy.name = 'socks'
         self.action.add_sock (sockproxy)

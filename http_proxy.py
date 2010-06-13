@@ -7,33 +7,6 @@ import eventlet
 import base
 from http import HttpAction, HttpResponse
 from server import TcpEventletClient
-socks = eventlet.import_patched ('socks')
-
-class TcpSocksClient (TcpEventletClient):
-
-    def connect (self, hostname, **kargs):
-        '''
-        proxytype - The type of the proxy to be used. Three types
-                    are supported: PROXY_TYPE_SOCKS4 (including socks4a),
-                    PROXY_TYPE_SOCKS5 and PROXY_TYPE_HTTP
-        addr      - The address of the server (IP or DNS).
-        port      - The port of the server. Defaults to 1080 for SOCKS
-                    servers and 8080 for HTTP proxy servers.
-        rdns      - Should DNS queries be preformed on the remote side
-                    (rather than the local side). The default is True.
-                    Note: This has no effect with SOCKS4 servers.
-        username  - Username to authenticate with to the server.
-                    The default is no authentication.
-        password  - Password to authenticate with to the server.
-                    Only relevant when username is also provided.
-        '''
-        self.sock = socks.socksocket (socket.AF_INET, socket.SOCK_STREAM)
-        hostinfo = hostname.partition (':')
-        if len (hostinfo[1]) == 0: port = 80
-        else: port = int (hostinfo[2])
-        self.caddr = (hostinfo[0], port)
-        self.sock.setproxy (**kargs)
-        self.sock.connect (self.caddr)
 
 class HttpProxyResponse (HttpResponse):
     MAX_CACHE = 16 * 1024

@@ -60,8 +60,9 @@ class TcpEventletServer (base.TcpServer):
 class TcpEventletClient (base.TcpClient):
 
     def connect (self, hostname, **kargs):
-        hostinfo = hostname.partition (':')
-        port = int (hostinfo[2]) if len (hostinfo[1]) != 0 else 80
+        hostinfo = hostname.split (':')
+        if len (hostinfo) == 1: port = 80
+        else: port = int (hostinfo[1])
         self.sock = eventlet.connect ((hostinfo[0], port))
 
 class EventletConnPool (object):
