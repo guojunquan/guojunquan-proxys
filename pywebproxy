@@ -21,7 +21,6 @@ class Proxy (object):
     def __init__ (self):
         default = HttpProxyAction (DummyConnPool (factory = TcpEventletClient))
         self.action = HttpGfwProxyDispatcher (default)
-        self.action.loadgfw ()
 
     def run (self, **kargs):
         server = HttpServer (self.action)

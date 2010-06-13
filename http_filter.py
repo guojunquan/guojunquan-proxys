@@ -10,36 +10,79 @@ import datetime
 from http import HttpAction
 from eventlet.timeout import Timeout as eTimeout
 
+class DomainFilter (object):
+
+    def __init__ (self, filepath): self.filepath, self.domains = filepath, {}
+
+    def add (self, domain):
+        doptr, chunk, domain = self.domains, domain.split ('.'), domain.lower ()
+        for c in reversed (chunk):
+            if len (c.strip ()) == 0: continue
+            if c not in doptr or doptr[c] is None: doptr[c] = {}
+            lastptr, doptr = doptr, doptr[c]
+        if len (doptr) == 0: lastptr[c] = None
+
+    def remove (self, domain):
+        doptr, stack, chunk = self.domains, [], domain.split ('.')
+        for c in reversed (chunk):
+            if len (c.strip ()) == 0: raise LookupError ()
+            if doptr is None: return False
+            stack.append (doptr)
+            if c not in doptr: return False
+            doptr = doptr[c]
+        for doptr, c in zip (reversed (stack), chunk):
+            if doptr[c] is None or len (doptr[c]) == 0: del doptr[c]
+        return True
+
+    def __getitem__ (self, domain):
+        doptr, chunk = self.domains, domain.split ('.')
+        for c in reversed (chunk):
+            if len (c.strip ()) == 0: continue
+            if c not in doptr: return False
+            doptr = doptr[c]
+            if doptr is None: break
+        return doptr
+    def __contains__ (self, domain): return self.__getitem__ (domain) is None
+
+    def getlist (self, d = None, s = ''):
+        if d is None: d = self.domains
+        for k, v in d.items ():
+            t = '%s.%s' % (k, s)
+            if v is None: yield t.strip ('.')
+            else:
+                for i in self.getlist (v, t): yield i
+
+    def show (self, d = None, s = 0):
+        if d is None: d = self.domains
+        for k, v in d.items ():
+            yield '  '*s + k
+            if v is not None:
+                for i in self.show (v, s + 1): yield i
+
+    def load (self):
+        with open (self.filepath, 'r') as gfwfile:
+            for line in gfwfile: self.add (line.strip ().lower ())
+
+    def save (self):
+        selflist = []
+        for i in self.getlist (): selflist.append (i)
+        selflist.sort ()
+        with open (self.filepath, 'w+') as gfwfile:
+            gfwfile.write ('\n'.join (selflist))
+
 class HttpGfwProxyDispatcher (HttpAction):
     VERBS = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE']
     url_map = {}
 
-    def __init__ (self, default_action = None):
-        self.gfwlist, self.default, self.working = [], default_action, {}
+    def __init__ (self, default_action = None, gfwpath = 'gfw'):
+        self.default, self.working = default_action, {}
+        self.gfw = DomainFilter (gfwpath)
+        self.gfw.load ()
         self.sockproxies, self.httpproxies  = [], []
 
     def add_http (self, proxy): self.httpproxies.append (proxy)
     def add_sock (self, proxy): self.sockproxies.append (proxy)
         
-    def loadgfw (self, gfwpath = 'gfw'):
-        if gfwpath is None: gfwpath = self.gfwpath
-        else: self.gfwpath = gfwpath
-        with open (gfwpath, 'r') as gfwfile:
-            for line in gfwfile: self.gfw_append (line.strip ().lower ())
-        self.gfwlist.sort ()
-
-    def savegfw (self, gfwpath = None):
-        if gfwpath is None: gfwpath = self.gfwpath
-        with open (gfwpath, 'w+') as gfwfile:
-            gfwfile.write ('\n'.join (self.gfwlist))
-    
-    def gfw_append (self, h):
-        if h not in self.gfwlist: self.gfwlist.append (h)
-
-    def gfw_check (self, h):
-        for g in self.gfwlist:
-            if h.endswith (g): return True
-
     def gfw_action (self, request):
         if request.verb in self.VERBS and len (self.httpproxies) > 0:
             for s in self.httpproxies:
@@ -52,8 +95,7 @@ class HttpGfwProxyDispatcher (HttpAction):
             except (EOFError, socket.error): pass
         raise base.HttpException (501)
 
-    def direct_failed (self, request):
-        return self.gfw_action (request)
+    def direct_failed (self, request): return self.gfw_action (request)
 
     def action (self, request):
         if not request.hostname:
@@ -65,7 +107,7 @@ class HttpGfwProxyDispatcher (HttpAction):
         self.working[request] = datetime.datetime.now ()
         try:
             hostinfo = request.hostname.partition (':')
-            if self.gfw_check (hostinfo[0].lower ()):
+            if hostinfo[0].strip ().lower () in self.gfw:
                 return self.gfw_action (request)
             else:
                 try:
@@ -121,10 +163,10 @@ class HttpGfwProxyDispatcher (HttpAction):
         response.append_body (self.html_header % 'gfw list')
         response.append_body ('<form action="/gfwadd" method="post">\
 <input type="text" name="host"/><input type="submit" value="Submit"/>\
-</form><a href="/gfwsave">save</a><br/>')
+</form><a href="/gfwload">load</a>|<a href="/gfwsave">save</a><br/>')
         response.append_body ('<table><thead><td>hostname</td>\
 <td>action</td></thead><tbody>')
-        for hostname in self.gfwlist:
+        for hostname in self.gfw.getlist ():
             response.append_body ('<tr><td>%s</td><td><a href="/gfwdel?host=%s">\
 del</a></td></tr>' % (hostname, hostname))
         response.append_body ('</tbody></table></body>\n</html>')
@@ -133,24 +175,27 @@ del</a></td></tr>' % (hostname, hostname))
     
     def action_gfwdel (self, request):
         host = request.get_params_dict (request.urls.get ('query', ''))['host']
-        if host in self.gfwlist: self.gfwlist.remove (host)
-        return request.make_redirect ('/gfwlist')
+        if self.gfw.remove (host.strip ().lower ()):
+            return request.make_redirect ('/gfwlist')
+        response = request.make_response (500)
+        response['Content-Type'] = 'text/plain; charset=ISO-8859-1'
+        response.append_body ('remove failed')
+        return response
     url_map['/gfwdel'] = action_gfwdel
 
     def action_gfwadd (self, request):
         request.recv_body ()
         host = request.get_params_dict (''.join (request.content))['host']
-        self.gfw_append (host)
-        self.gfwlist.sort ()
+        self.gfw.add (host.strip ())
         return request.make_redirect ('/gfwlist')
     url_map['/gfwadd'] = action_gfwadd
 
     def action_gfwsave (self, request):
-        self.savegfw ()
+        self.gfw.save ()
         return request.make_redirect ('/gfwlist')
     url_map['/gfwsave'] = action_gfwsave
 
     def action_gfwload (self, request):
-        self.loadgfw (None)
+        self.gfw.load ()
         return request.make_redirect ('/gfwlist')
     url_map['/gfwload'] = action_gfwload
