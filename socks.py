@@ -119,5 +119,5 @@ class TcpSocksClient (TcpEventletClient):
             elif proxytype == PROXY_TYPE_SOCKS4:
                 self.socks4_connect (hostinfo[0], target_port, username, rdns)
         except GeneralProxyError:
-            self.sock.final ()
+            self.sock.close ()
             raise

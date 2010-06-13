@@ -19,7 +19,7 @@ class StringSock (base.SockBase):
 
     def __init__ (self, data): self.recv_rest = data
     def fileno (self): return -1
-    def final (self): pass
+    def close (self): pass
     def sendall (self, data): raise NotImplementedError ()
     def recv (self, size): raise NotImplementedError ()
 

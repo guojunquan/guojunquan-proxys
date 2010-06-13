@@ -84,7 +84,7 @@ class EventletConnPool (object):
         return conn
 
     def release (self, sock, force):
-        if len (self.keep) >= self.max_keep or force: sock.final ()
+        if len (self.keep) >= self.max_keep or force: sock.close ()
         else: self.keep.append (sock)
         self.counter.release ()
 

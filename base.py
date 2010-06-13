@@ -23,7 +23,7 @@ class SockBase (object):
 
     def __init__ (self): self.recv_rest = ""
     def fileno (self): return self.sock.fileno ()
-    def final (self): self.sock.close ()
+    def close (self): self.sock.close ()
     def sendall (self, data): return self.sock.sendall (data)
 
     def recv (self, size):
@@ -66,7 +66,7 @@ class TcpServer (SockBase):
     def run (self):
         try:
             while self.loop_func (): pass
-        finally: self.final ()
+        finally: self.close ()
     
 class TcpClient (SockBase):
 
@@ -89,4 +89,4 @@ class DummyConnPool (object):
         conn.connect (hostname, **self.kargs)
         return conn
 
-    def release (self, sock, force): sock.final ()
+    def release (self, sock, force): sock.close ()

@@ -16,7 +16,7 @@ class SockBase (object):
         self.poll.register (self.sock.fileno (), select.POLLIN | select.POLLHUP)
         self.poll.register (fdo, select.POLLHUP)
 
-    def final (self):
+    def close (self):
         self.poll.unregister (self.fdo)
         self.poll.unregister (self.sock.fileno ())
         self.sock.close ()
@@ -131,5 +131,5 @@ if __name__ == "__main__":
             import traceback
             print traceback.format_exc ()
     finally:
-        if hasattr (srv, 'sock'): srv.sock.final ()
+        if hasattr (srv, 'sock'): srv.sock.close ()
         sys.stdout.flush ()

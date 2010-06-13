@@ -123,7 +123,7 @@ class HttpRequest (HttpMessage):
     
     def term (self):
         # use with EventletConnPool may leak counter
-        for s in self.socks: s.final ()
+        for s in self.socks: s.close ()
         for t in self.threads: t.cancel ()
 
 class HttpResponse (HttpMessage):
