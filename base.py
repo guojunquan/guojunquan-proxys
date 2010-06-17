@@ -28,7 +28,7 @@ class SockBase (object):
 
     def recv (self, size):
         data = self.sock.recv (size)
-        if len (data) == 0: raise EOFError ()
+        if len (data) == 0: raise EOFError (self)
         return data
 
     def recv_once (self, size = 0):

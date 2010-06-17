@@ -50,8 +50,8 @@ class Proxy (object):
 
 if __name__ == "__main__":
     # eventlet.debug.hub_listener_stacks (True)
-    eventlet.spawn (eventlet.backdoor.backdoor_server,
-                    eventlet.listen (('localhost', 3000)))
+    # eventlet.spawn (eventlet.backdoor.backdoor_server,
+    #                 eventlet.listen (('localhost', 3000)))
     log.log = log.Logging ("~/access.log", "~/error.log", level = logging.INFO)
     # log.log.hook_std ()
     try:

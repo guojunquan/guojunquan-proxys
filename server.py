@@ -108,11 +108,10 @@ class HttpServer (TcpEventletServer):
         except (EOFError, socket.error): return False
         except base.HttpException, err:
             response = self.err_handler (request, err, err.args[0])
-            if response is None: return False
         except Exception, err:
-            response = self.err_handler (request, err)
-            if response is None: return False
             print traceback.format_exc ()
+            response = self.err_handler (request, err)
+        if response is None: return False
         try: response.finish ()
         except (EOFError, socket.error): return False
         except Exception:
