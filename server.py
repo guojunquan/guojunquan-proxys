@@ -37,24 +37,26 @@ class TcpEventletServer (base.TcpServer):
         return True
 
     @staticmethod
-    def pump_one (s, t, counter, n):
+    def pump_one (s, t, counter, n, tmpth):
         try:
             while True:
                 d = s.recv_once ()
                 if counter: counter[n] += len (d)
                 t.sendall (d)
         except (EOFError, socket.error): pass
+        for th in tmpth:
+            if th != eventlet.greenthread.getcurrent(): th.kill ()
 
     def pump (self, flows, threads, counter):
         if len (flows) == 0: return
         tmpth, spawn = [], eventlet.greenthread.spawn
-        for s, t, n in flows[:-1]:
-            th = spawn (self.pump_one, s, t, counter, n)
+        for s, t, n in flows:
+            th = spawn (self.pump_one, s, t, counter, n, tmpth)
             tmpth.append (th)
             threads.append (th)
-        self.pump_one (flows[-1][0], flows[-1][1], counter, flows[-1][2])
         for th in tmpth:
-            th.wait ()
+            try: th.wait ()
+            except eventlet.greenlet.GreenletExit: pass
             threads.remove (th)
 
 class TcpEventletClient (base.TcpClient):

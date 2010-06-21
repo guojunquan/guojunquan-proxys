@@ -122,9 +122,9 @@ class HttpRequest (HttpMessage):
         return response
     
     def term (self):
+        for t in self.threads: t.cancel ()
         # use with EventletConnPool may leak counter
         for s in self.socks: s.close ()
-        for t in self.threads: t.cancel ()
 
 class HttpResponse (HttpMessage):
     from default_setting import DEFAULT_PAGES

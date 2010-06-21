@@ -4,7 +4,6 @@
 # @author: shell.xu
 import socket
 import struct
-import eventlet
 import base
 from http import HttpAction, HttpResponse
 from server import TcpEventletClient

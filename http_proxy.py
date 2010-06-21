@@ -3,7 +3,6 @@
 # @date: 2010-06-04
 # @author: shell.xu
 import socket
-import eventlet
 import base
 from http import HttpAction, HttpResponse
 from server import TcpEventletClient
