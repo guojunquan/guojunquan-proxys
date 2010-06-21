@@ -88,11 +88,11 @@ class HttpGfwProxyDispatcher (HttpAction):
             for s in self.httpproxies:
                 request.action = s
                 try: return s.action (request)
-                except (EOFError, socket.error): pass
+                except (EOFError, socket.error, base.HttpException): pass
         for s in self.sockproxies:
             request.action = s
             try: return s.action (request)
-            except (EOFError, socket.error): pass
+            except (EOFError, socket.error, base.HttpException): pass
         raise base.HttpException (501)
 
     def direct_failed (self, request): return self.gfw_action (request)
