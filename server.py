@@ -9,7 +9,7 @@ import socket
 import eventlet
 import traceback
 from eventlet import tpool
-from eventlet.timeout import Timeout as eTimeout
+from eventlet.timeout import Timeout as eventTimeout
 import base
 import log
 import http
@@ -97,34 +97,45 @@ class HttpServer (TcpEventletServer):
     def __init__ (self, action, **kargs):
         super (HttpServer, self).__init__ (**kargs)
         self.action = action
-        self.timeout = 60
+        self.max_timeout, self.timeout = 1200, 60
 
     def do_process (self):
-        request = http.HttpRequest ([self,])
         try:
-            with eTimeout (self.timeout, base.TimeoutError) as timeout:
-                request.timeout = timeout
+            with eventTimeout (self.max_timeout):
+                request = http.HttpRequest ([self,])
+                response = self.process_request (request)
+                if response is None: return False
+                try:
+                    log.log.action (request, response)
+                    if self.DEBUG: print response.make_header ()
+                except: pass
+                return response.connection
+        except eventTimeout, timeout: return False
+
+    def process_request (self, request):
+        try:
+            request.timeout = eventTimeout (self.timeout, base.TimeoutError)
+            try:
                 request.load_header ()
                 if self.DEBUG: print request.make_header ()
                 response = self.action.action (request)
-                if response == None: response = request.make_response (500)
-        except (EOFError, socket.error): return False
+            finally: request.timeout.cancel ()
+            if response == None: response = request.make_response (500)
+        except eventTimeout: raise
+        except (EOFError, socket.error): return None
         except base.HttpException, err:
             response = self.err_handler (request, err, err.args[0])
         except Exception, err:
             print traceback.format_exc ()
             response = self.err_handler (request, err)
-        if response is None: return False
+        if response is None: return None
         try: response.finish ()
-        except (EOFError, socket.error): return False
+        except eventTimeout: raise
+        except (EOFError, socket.error): return None
         except Exception:
             print traceback.format_exc ()
-            return False
-        try:
-            log.log.action (request, response)
-            if self.DEBUG: print response.make_header ()
-        except: pass
-        return response.connection
+            return None
+        return response
     
     def err_handler (self, request, err, code = 500):
         if hasattr (request, 'response') and\
