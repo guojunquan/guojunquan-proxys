@@ -5,8 +5,13 @@ import zlib
 import time
 import socket
 import select
+# import logging
 import datetime
+import traceback
 import threading
+
+# logging.basicConfig (level = logging.DEBUG, filename = 'debug.txt',
+#                      format='%(levelname)s[%(asctime)s]:%(message)s')
 
 class SockBase (object):
     buffer_size = 2096
@@ -55,12 +60,13 @@ class SockBase (object):
 class Timeout (threading.Thread):
     def __init__ (self, timeout, func):
         threading.Thread.__init__ (self)
+        self.setDaemon (True)
         self.timeout, self.func = timeout, func
         self.reset ()
     def reset (self): self.dt = datetime.datetime.now ()
+    def time (self): return (datetime.datetime.now () - self.dt).seconds
     def run (self):
-        while (datetime.datetime.now () - self.dt).seconds < self.timeout:
-            time.sleep (2)
+        while self.time () < self.timeout: time.sleep (2)
         self.func ()
 
 class HoHServer (object):
@@ -136,7 +142,6 @@ class HoHServer (object):
 
     def close (self):
         if hasattr (self, 'sock'): self.sock.close ()
-        sys.stdout.flush ()
         sys.exit (0)
 
 if __name__ == "__main__":
@@ -147,7 +152,5 @@ if __name__ == "__main__":
             srv.recv_req ()
             srv.send_req ()
             srv.recv_res ()
-        except Exception, err:
-            import traceback
-            print traceback.format_exc ()
+        except Exception, err: logging.error (traceback.format_exc ())
     finally: srv.close ()
