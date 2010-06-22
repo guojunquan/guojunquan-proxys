@@ -2,8 +2,11 @@
 import os
 import sys
 import zlib
+import time
 import socket
 import select
+import datetime
+import threading
 
 class SockBase (object):
     buffer_size = 2096
@@ -49,7 +52,22 @@ class SockBase (object):
         data, self.recv_rest = self.recv_rest[:length], self.recv_rest[length:]
         return data
 
+class Timeout (threading.Thread):
+    def __init__ (self, timeout, func):
+        threading.Thread.__init__ (self)
+        self.timeout, self.func = timeout, func
+        self.reset ()
+    def reset (self): self.dt = datetime.datetime.now ()
+    def run (self):
+        while (datetime.datetime.now () - self.dt).seconds < self.timeout:
+            time.sleep (2)
+        self.func ()
+
 class HoHServer (object):
+
+    def __init__ (self):
+        self.timeout = Timeout (30, self.close)
+        self.timeout.start ()
 
     def read_header (self, data):
         header = {}
@@ -112,11 +130,14 @@ class HoHServer (object):
             if len (part) == 1: raise Exception ()
             self.headers[part[0]] = part[1].strip ()
         self.recv_body ()
+        appendix = 'appendix'
+        data = '\r\n\r\n'.join ([appendix, self.header, ''.join (self.content)])
+        sys.stdout.write (zlib.compress (data, 9))
 
-    def send_res (self):
-        data = self.header + '\r\n\r\n' + ''.join (self.content)
-        sys.stdout.write (str (len (data)) + '\r\n\r\n')
-        sys.stdout.write (zlib.compress (data))
+    def close (self):
+        if hasattr (self, 'sock'): self.sock.close ()
+        sys.stdout.flush ()
+        sys.exit (0)
 
 if __name__ == "__main__":
     print 'Content-Type: text/html; charset=ISO-8859-4\r\nConnection: close\r\n'
@@ -126,10 +147,7 @@ if __name__ == "__main__":
             srv.recv_req ()
             srv.send_req ()
             srv.recv_res ()
-            srv.send_res ()
         except Exception, err:
             import traceback
             print traceback.format_exc ()
-    finally:
-        if hasattr (srv, 'sock'): srv.sock.close ()
-        sys.stdout.flush ()
+    finally: srv.close ()

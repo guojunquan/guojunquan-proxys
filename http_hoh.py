@@ -69,23 +69,26 @@ Accept-Charset: GB2312,utf-8;q=0.7,*;q=0.7\r\nHost: %s\r\n\r\n'
             res_data.load_header ()
             res_data.recv_body ()
         finally: res_data.socks.reverse ()
-        datas = ''.join (res_data.content).partition ('\r\n\r\n')
-        if self.DEBUG: print datas[0]
-        try: return zlib.decompress (datas[2])
+        try: return zlib.decompress (''.join (res_data.content))
         except: raise base.BadGatewayError (''.join (res_data.content))
         
     def send_response (self, request, data):
+        idx = data.find ('\r\n\r\n')
+        appendix, data = data[:idx], data[idx+4:]
+        if self.DEBUG: print appendix
         response = request.make_response (200, http_proxy.HttpProxyResponse)
         response.socks = [request.socks[0], StringSock (data)]
 
-        response.socks.reverse ()
-        try: response.load_header ()
-        finally: response.socks.reverse ()
-        response.send_header ()
+        try:
+            response.socks.reverse ()
+            try: response.load_header ()
+            finally: response.socks.reverse ()
+            response.send_header ()
 
-        response.socks.reverse ()
-        try: response.recv_body ()
-        finally: response.socks.reverse ()
+            response.socks.reverse ()
+            try: response.recv_body ()
+            finally: response.socks.reverse ()
+        except NotImplementedError, err: raise base.BadGatewayError (err)
         return response
 
     def action (self, request):
