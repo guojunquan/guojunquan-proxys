@@ -83,20 +83,6 @@ class HttpGfwProxyDispatcher (HttpAction):
     def add_http (self, proxy): self.httpproxies.append (proxy)
     def add_sock (self, proxy): self.sockproxies.append (proxy)
         
-    def gfw_action (self, request):
-        if request.verb in self.VERBS and len (self.httpproxies) > 0:
-            for s in self.httpproxies:
-                request.action = s
-                try: return s.action (request)
-                except (EOFError, socket.error, base.HttpException): pass
-        for s in self.sockproxies:
-            request.action = s
-            try: return s.action (request)
-            except (EOFError, socket.error, base.HttpException): pass
-        raise base.HttpException (501)
-
-    def direct_failed (self, request): return self.gfw_action (request)
-
     def action (self, request):
         if not request.hostname:
             for url, action in self.url_map.items ():
@@ -107,14 +93,19 @@ class HttpGfwProxyDispatcher (HttpAction):
         self.working[request] = datetime.datetime.now ()
         try:
             hostinfo = request.hostname.partition (':')
-            if hostinfo[0].strip ().lower () in self.gfw:
-                return self.gfw_action (request)
-            else:
-                try:
-                    request.action = self.default
-                    return self.default.action (request)
-                except (EOFError, socket.error): return self.direct_failed (request)
-                # except base.TimeoutException: return self.direct_failed (request)
+            if hostinfo[0].strip ().lower () not in self.gfw:
+                request.action = self.default
+                return self.default.action (request)
+            if request.verb in self.VERBS and len (self.httpproxies) > 0:
+                for s in self.httpproxies:
+                    request.action = s
+                    try: return s.action (request)
+                    except (EOFError, socket.error, base.HttpException): pass
+            for s in self.sockproxies:
+                request.action = s
+                try: return s.action (request)
+                except (EOFError, socket.error, base.HttpException): pass
+            raise base.HttpException (501)
         finally: del self.working[request]
 
     html_header = '<html>\n<head><title>%s</title></head>\n<body>\n'
@@ -156,7 +147,7 @@ class HttpGfwProxyDispatcher (HttpAction):
         response['Content-Type'] = 'text/plain; charset=ISO-8859-1'
         response.append_body ('request not found')
         return response
-    url_map['/cutoff'] = action_cutoff
+    # url_map['/cutoff'] = action_cutoff
 
     def action_gfwlist (self, request):
         response = request.make_response ()

@@ -47,6 +47,9 @@ class HttpProxyAction (HttpAction):
     def get_hostname (self, request): return request.hostname
 
     def send_request (self, request):
+        request.orig_header = request.header
+        request.header = dict ([(k, v) for k, v in request.header.items ()
+                                if not k.startswith ('Proxy')])
         if not request.hostname: raise base.NotAcceptableError (request.url)
         rest = request.url.partition (request.hostname)
         if not rest[2]: raise base.NotAcceptableError (request.url)
