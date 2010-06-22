@@ -8,6 +8,7 @@ import copy
 import socket
 import eventlet
 import traceback
+from eventlet import tpool
 from eventlet.timeout import Timeout as eTimeout
 import base
 import log
@@ -65,7 +66,7 @@ class TcpEventletClient (base.TcpClient):
         hostinfo = hostname.split (':')
         if len (hostinfo) == 1: port = 80
         else: port = int (hostinfo[1])
-        self.sock = eventlet.connect ((hostinfo[0], port))
+        self.sock = tpool.execute (eventlet.connect, (hostinfo[0], port))
 
 class EventletConnPool (object):
 
