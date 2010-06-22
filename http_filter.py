@@ -133,22 +133,6 @@ class HttpGfwProxyDispatcher (HttpAction):
         return response
     url_map['/status'] = action_status
 
-    def action_cutoff (self, request):
-        from_addr = request.get_params_dict (
-            request.urls.get ('query', ''))['from'].split (':')
-        from_addr[1] = int (from_addr[1])
-        from_addr = tuple (from_addr)
-        for req in self.working.keys ():
-            if req.from_addr == from_addr:
-                req.term ()
-                del self.working[req]
-                return request.make_redirect ('/status')
-        response = request.make_response (500)
-        response['Content-Type'] = 'text/plain; charset=ISO-8859-1'
-        response.append_body ('request not found')
-        return response
-    # url_map['/cutoff'] = action_cutoff
-
     def action_gfwlist (self, request):
         response = request.make_response ()
         response.append_body (self.html_header % 'gfw list')
