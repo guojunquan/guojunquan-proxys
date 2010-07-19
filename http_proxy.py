@@ -7,22 +7,22 @@ import base
 from http import HttpAction, HttpResponse
 from server import TcpEventletClient
 
-class HttpProxyResponse (HttpResponse):
+class HttpProxyResponse(HttpResponse):
     MAX_CACHE = 16 * 1024
 
-    def load_header (self):
-        try: info = self.recv_headers ()
-        except base.BadRequestError, err: raise base.BadGatewayError (err.args[1:])
-        if len (info) < 2: raise base.BadGatewayError (info)
-        self.version, self.code = info[0], int (info[1])
-        if len (info) >= 3: self.phrase = " ".join (info[2:])
+    def load_header(self):
+        try: info = self.recv_headers()
+        except base.BadRequestError, err: raise base.BadGatewayError(err.args[1:])
+        if len(info) < 2: raise base.BadGatewayError(info)
+        self.version, self.code = info[0], int(info[1])
+        if len(info) >= 3: self.phrase = " ".join(info[2:])
         else: self.phrase = self.DEFAULT_PAGES[self.code][0]
-        if int (self.get ('Content-Length', '1')) < self.MAX_CACHE:
+        if int(self.get('Content-Length', '1')) < self.MAX_CACHE:
             self.cache = True
-        if self.get ('Transfer-Encoding', None) == 'chunked':
+        if self.get('Transfer-Encoding', None) == 'chunked':
             self.chunk_mode = True
 
-    def check_hasbody (self):
+    def check_hasbody(self):
         if self.request.verb == 'HEAD': return False
         if self.code in [100, 101, 204, 304]: return False
         # it has body, so real server close connection to end body
@@ -30,100 +30,100 @@ class HttpProxyResponse (HttpResponse):
         self.connection = False
         return True
 
-    def append_body (self, data):
-        if not self.chunk_mode: self.socks[1].sendall (data)
-        else: self.socks[1].sendall ('%x\r\n%s\r\n' % (len (data), data))
-        self.request.proxy_count[1] += len (data)
-        if self.cache: super (HttpProxyResponse, self).append_body (data)
+    def append_body(self, data):
+        if not self.chunk_mode: self.socks[1].sendall(data)
+        else: self.socks[1].sendall('%x\r\n%s\r\n' %(len(data), data))
+        self.request.proxy_count[1] += len(data)
+        if self.cache: super(HttpProxyResponse, self).append_body(data)
 
-class HttpProxyAction (HttpAction):
+class HttpProxyAction(HttpAction):
     name = 'proxy'
     DEBUG = False
 
-    def __init__ (self, shared_pool):
-        super (HttpProxyAction, self).__init__ ()
+    def __init__(self, shared_pool):
+        super(HttpProxyAction, self).__init__()
         self.shared_pool = shared_pool
     
-    def get_hostname (self, request): return request.hostname
+    def get_hostname(self, request): return request.hostname
 
-    def send_request (self, request):
+    def send_request(self, request):
         request.orig_header = request.header
-        request.header = dict ([(k, v) for k, v in request.header.items ()
-                                if not k.startswith ('Proxy')])
-        if not request.hostname: raise base.NotAcceptableError (request.url)
-        rest = request.url.partition (request.hostname)
-        if not rest[2]: raise base.NotAcceptableError (request.url)
-        req_info = request.make_headers ([request.verb, rest[2], request.version])
+        request.header = dict([(k, v) for k, v in request.header.items()
+                                if not k.startswith('Proxy')])
+        if not request.hostname: raise base.NotAcceptableError(request.url)
+        rest = request.url.partition(request.hostname)
+        if not rest[2]: raise base.NotAcceptableError(request.url)
+        req_info = request.make_headers([request.verb, rest[2], request.version])
         if self.DEBUG: print req_info
-        request.socks[1].sendall (req_info + "".join (request.content))
+        request.socks[1].sendall(req_info + "".join(request.content))
 
-    def get_response (self, request):
-        response = request.make_response (200, HttpProxyResponse)
-        response.socks.reverse ()
-        try: response.load_header ()
-        finally: response.socks.reverse ()
-        response.send_header ()
-        if self.DEBUG: print response.make_header ()
+    def get_response(self, request):
+        response = request.make_response(200, HttpProxyResponse)
+        response.socks.reverse()
+        try: response.load_header()
+        finally: response.socks.reverse()
+        response.send_header()
+        if self.DEBUG: print response.make_header()
 
-        if hasattr (request, 'timeout'): request.timeout.cancel ()
-        response.socks.reverse ()
-        try: response.recv_body ()
-        finally: response.socks.reverse ()
+        if hasattr(request, 'timeout'): request.timeout.cancel()
+        response.socks.reverse()
+        try: response.recv_body()
+        finally: response.socks.reverse()
         response.body_sended = True
-        return response, response.get ('Connection', 'close').lower () == 'close'
+        return response, response.get('Connection', 'close').lower() == 'close'
 
-    def action_connect (self, request):
-        if self.DEBUG: print request.make_header ()
-        response = request.make_response ()
-        response.send_header ()
-        if self.DEBUG: print response.make_header ()
+    def action_connect(self, request):
+        if self.DEBUG: print request.make_header()
+        response = request.make_response()
+        response.send_header()
+        if self.DEBUG: print response.make_header()
         return response, True
 
-    def action (self, request):
+    def action(self, request):
         force, request.proxy_count = True, [0, 0] # send, recv
         try:
-            request.recv_body ()
-            try: sock = self.shared_pool.acquire (self.get_hostname (request))
-            except (EOFError, socket.error): raise base.BadGatewayError ()
-            if sock is None: raise base.BadGatewayError ()
-            request.socks.append (sock)
+            request.recv_body()
+            try: sock = self.shared_pool.acquire(self.get_hostname(request))
+            except(EOFError, socket.error): raise base.BadGatewayError()
+            if sock is None: raise base.BadGatewayError()
+            request.socks.append(sock)
             try:
                 if request.verb == 'CONNECT':
-                    response, force = self.action_connect (request)
-                    if hasattr (request, 'timeout'): request.timeout.cancel ()
+                    response, force = self.action_connect(request)
+                    if hasattr(request, 'timeout'): request.timeout.cancel()
                     s = request.socks
-                    s[0].pump ([[s[0], s[1], 0], [s[1], s[0], 1],],
+                    s[0].pump([[s[0], s[1], 0], [s[1], s[0], 1],],
                                request.threads, request.proxy_count)
                     response.connection, response.body_sended = False, True
                 else:
-                    self.send_request (request)
-                    response, force = self.get_response (request)
+                    self.send_request(request)
+                    response, force = self.get_response(request)
             finally:
-                request.socks.remove (sock)
-                self.shared_pool.release (sock, force)
-        except base.TimeoutError, err: raise base.HttpException (504, err.args[1:])
+                request.socks.remove(sock)
+                self.shared_pool.release(sock, force)
+        except base.TimeoutError, err: raise base.HttpException(504, err.args[1:])
         return response
 
-class HttpProxyForwardAction (HttpProxyAction):
+class HttpProxyForwardAction(HttpProxyAction):
     name = 'forward'
 
-    def __init__ (self, shared_pool, hostname):
-        super (HttpProxyForwardAction, self).__init__ (shared_pool)
+    def __init__(self, shared_pool, hostname):
+        super(HttpProxyForwardAction, self).__init__(shared_pool)
         self.hostname = hostname
 
-    def get_hostname (self, request): return self.hostname
+    def get_hostname(self, request): return self.hostname
 
-    def send_request (self, request):
-        req_info = request.make_header ()
+    def send_request(self, request):
+        req_info = request.make_header()
         if self.DEBUG: print req_info
-        request.socks[1].sendall (req_info + "".join (request.content))
+        request.socks[1].sendall(req_info + "".join(request.content))
 
-    def action_connect (self, request):
-        if self.DEBUG: print request.make_header ()
-        request.socks[1].sendall (request.make_header () + "".join (request.content))
-        response = request.make_response ()
-        res_header = request.socks[1].recv_until ()
+    def action_connect(self, request):
+        if self.DEBUG: print request.make_header()
+        request.socks[1].sendall(request.make_header() + "".join(request.content))
+        response = request.make_response()
+        res_header = request.socks[1].recv_until()
         if self.DEBUG: print res_header
-        response.socks[0].sendall (res_header + '\r\n\r\n')
+        response.socks[0].sendall(res_header + '\r\n\r\n')
         response.header_sended = True
         return response, True
