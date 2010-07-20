@@ -82,8 +82,7 @@ class HttpRequest(HttpMessage):
         if len(info) < 3: raise base.BadRequestError(info)
         self.verb, self.url, self.version =\
             info[0].upper(), info[1], info[2].upper()
-        if self.verb not in self.VERBS:
-            raise base.MethodNotAllowedError(self.verb)
+        if self.verb not in self.VERBS: raise base.MethodNotAllowedError(self.verb)
         if self.version not in self.VERSIONS:
             raise base.HttpException(505, self.version)
         if self.url.startswith('/') or self.url.lower().find('://') != -1:

@@ -8,7 +8,6 @@ import socket
 import eventlet
 import datetime
 from http import HttpAction
-from eventlet.timeout import Timeout as eTimeout
 
 class DomainFilter(object):
 
@@ -71,7 +70,7 @@ class DomainFilter(object):
             gfwfile.write('\n'.join(selflist))
 
 class HttpGfwProxyDispatcher(HttpAction):
-    VERBS = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE']
+    VERBS = ['CONNECT',]
     url_map = {}
 
     def __init__(self, default_action = None, gfwpath = 'gfw'):
@@ -96,7 +95,7 @@ class HttpGfwProxyDispatcher(HttpAction):
             if hostinfo[0].strip().lower() not in self.gfw:
                 request.action = self.default
                 return self.default.action(request)
-            if request.verb in self.VERBS and len(self.httpproxies) > 0:
+            if request.verb not in self.VERBS and len(self.httpproxies) > 0:
                 for s in self.httpproxies:
                     request.action = s
                     try: return s.action(request)

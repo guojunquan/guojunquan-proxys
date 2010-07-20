@@ -66,7 +66,7 @@ class TcpEventletClient(base.TcpClient):
         hostinfo = hostname.split(':')
         if len(hostinfo) == 1: port = 80
         else: port = int(hostinfo[1])
-        self.sock = tpool.execute(eventlet.connect,(hostinfo[0], port))
+        self.sock = tpool.execute(eventlet.connect, (hostinfo[0], port))
 
 class EventletConnPool(object):
 
@@ -105,12 +105,12 @@ class HttpServer(TcpEventletServer):
                 request = http.HttpRequest([self,])
                 response = self.process_request(request)
                 if response is None: return False
-                try:
-                    log.log.action(request, response)
-                    if self.DEBUG: print response.make_header()
-                except: pass
-                return response.connection
         except eventTimeout, timeout: return False
+        try:
+            log.log.action(request, response)
+            if self.DEBUG: print response.make_header()
+        except: pass
+        return response.connection
 
     def process_request(self, request):
         try:

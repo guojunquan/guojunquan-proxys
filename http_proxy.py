@@ -47,13 +47,13 @@ class HttpProxyAction(HttpAction):
     def get_hostname(self, request): return request.hostname
 
     def send_request(self, request):
-        request.orig_header = request.header
-        request.header = dict([(k, v) for k, v in request.header.items()
-                                if not k.startswith('Proxy')])
         if not request.hostname: raise base.NotAcceptableError(request.url)
         rest = request.url.partition(request.hostname)
         if not rest[2]: raise base.NotAcceptableError(request.url)
-        req_info = request.make_headers([request.verb, rest[2], request.version])
+        lines = [" ".join([request.verb, rest[2], request.version])]
+        for k, v in request.header.items():
+            if not k.startswith('Proxy'): lines.append("%s: %s" %(k, v))
+        req_info = "\r\n".join(lines) + "\r\n\r\n"
         if self.DEBUG: print req_info
         request.socks[1].sendall(req_info + "".join(request.content))
 
@@ -70,7 +70,8 @@ class HttpProxyAction(HttpAction):
         try: response.recv_body()
         finally: response.socks.reverse()
         response.body_sended = True
-        return response, response.get('Connection', 'close').lower() == 'close'
+        response.connection = response.get('Proxy-Connection', '').lower() == 'close'
+        return response, response.get('Connection', '').lower() == 'close'
 
     def action_connect(self, request):
         if self.DEBUG: print request.make_header()
