@@ -100,12 +100,9 @@ class HttpServer(TcpEventletServer):
         self.max_timeout, self.timeout = 1200, 60
 
     def do_process(self):
-        try:
-            with eventTimeout(self.max_timeout):
-                request = http.HttpRequest([self,])
-                response = self.process_request(request)
-                if response is None: return False
-        except eventTimeout, timeout: return False
+        request = http.HttpRequest([self,])
+        response = self.process_request(request)
+        if response is None: return False
         try:
             log.log.action(request, response)
             if self.DEBUG: print response.make_header()
@@ -121,7 +118,6 @@ class HttpServer(TcpEventletServer):
                 response = self.action.action(request)
             finally: request.timeout.cancel()
             if response == None: response = request.make_response(500)
-        except eventTimeout: raise
         except(EOFError, socket.error): return None
         except base.HttpException, err:
             response = self.err_handler(request, err, err.args[0])
@@ -130,7 +126,6 @@ class HttpServer(TcpEventletServer):
             response = self.err_handler(request, err)
         if response is None: return None
         try: response.finish()
-        except eventTimeout: raise
         except(EOFError, socket.error): return None
         except Exception:
             print traceback.format_exc()
