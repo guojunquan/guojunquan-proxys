@@ -5,59 +5,74 @@
 import sys
 import socks
 import logging
-import eventlet.backdoor
-import eventlet.debug
+import pyweb
 
-import log
-from base import DummyConnPool
-from server import HttpServer, TcpEventletClient, EventletConnPool
-from http_filter import HttpGfwProxyDispatcher
-from http_cache import HttpCacheFilter
-from http_proxy import HttpProxyAction, HttpProxyForwardAction
-from http_hoh import HttpOverHttpProxy
+from p_gfw import DispatchGFW
 
-class Proxy(object):
+# class Proxy(object):
 
-    def __init__(self):
-        default = HttpProxyAction(DummyConnPool(factory = TcpEventletClient))
-        self.action = HttpGfwProxyDispatcher(default)
+#     def __init__(self):
+#         default = HttpProxyAction(DummyConnPool(factory = TcpEventletClient))
+#         self.action = HttpGfwProxyDispatcher(default)
 
-    def run(self, **kargs):
-        server = HttpServer(self.action)
-        server.listen(**kargs)
-        server.run()
+#     def run(self, **kargs):
+#         server = HttpServer(self.action)
+#         server.listen(**kargs)
+#         server.run()
 
-    def addhttp(self, hostname):
-        forward = HttpProxyForwardAction(DummyConnPool(), hostname)
-        # upstream http proxy can use CONNECT, so it's same as sock proxy
-        self.action.add_sock(forward)
+#     def addhttp(self, hostname):
+#         forward = HttpProxyForwardAction(DummyConnPool(), hostname)
+#         # upstream http proxy can use CONNECT, so it's same as sock proxy
+#         self.action.add_sock(forward)
 
-    def addsocks(self, **kargs):
-        if 'rdns' not in kargs: kargs['rdns'] = True
-        if 'proxytype' not in kargs: kargs['proxytype'] = socks.PROXY_TYPE_SOCKS5
-        pool = DummyConnPool(factory = socks.TcpSocksClient, kargs = kargs)
-        sockproxy = HttpProxyAction(pool)
-        sockproxy.name = 'socks'
-        self.action.add_sock(sockproxy)
+#     def addsocks(self, **kargs):
+#         if 'rdns' not in kargs: kargs['rdns'] = True
+#         if 'proxytype' not in kargs: kargs['proxytype'] = socks.PROXY_TYPE_SOCKS5
+#         pool = DummyConnPool(factory = socks.TcpSocksClient, kargs = kargs)
+#         sockproxy = HttpProxyAction(pool)
+#         sockproxy.name = 'socks'
+#         self.action.add_sock(sockproxy)
 
-    def addhoh(self, url):
-        pool = EventletConnPool(factory = TcpEventletClient,
-                                 max_conn = 10, max_keep = 0)
-        # pool = DummyConnPool(factory = TcpEventletClient)
-        forward = HttpOverHttpProxy(pool, url)
-        self.action.add_http(forward)
+#     def addhoh(self, url):
+#         pool = EventletConnPool(factory = TcpEventletClient,
+#                                  max_conn = 10, max_keep = 0)
+#         # pool = DummyConnPool(factory = TcpEventletClient)
+#         forward = HttpOverHttpProxy(pool, url)
+#         self.action.add_http(forward)
 
-if __name__ == "__main__":
-    # eventlet.debug.hub_listener_stacks(True)
-    # eventlet.spawn(eventlet.backdoor.backdoor_server,
-    #                 eventlet.listen(('localhost', 3000)))
-    log.log = log.Logging("~/access.log", "~/error.log", level = logging.INFO)
-    # log.log.hook_std()
-    try:
-        p = Proxy()
-        if len(sys.argv) > 1:
-            print 'http over http on'
-            p.addhoh('http://shell909090.com/cgi-bin/test.py')
-        p.addsocks(addr = '127.0.0.1', port = 7777)
-        p.run()
-    except KeyboardInterrupt: log.log.write_stdout("exit.\r\n")
+# if __name__ == "__main__":
+#     log.log = log.Logging("~/access.log", "~/error.log", level = logging.INFO)
+#     try:
+#         p = Proxy()
+#         if len(sys.argv) > 1:
+#             print 'http over http on'
+#             p.addhoh('http://shell909090.com/cgi-bin/test.py')
+#         p.addsocks(addr = '127.0.0.1', port = 7777)
+#         p.run()
+#     except KeyboardInterrupt: log.log.write_stdout("exit.\r\n")
+
+dis = None
+
+def make_dis():
+    global dis
+    dis = DispatchGFW()
+
+def main(daemon = False):
+    pyweb.ApacheLog(sys.stdout).set_weblog()
+    logging.basicConfig(level = logging.INFO)
+    serve = pyweb.HttpServer(dis)
+    if daemon:
+        daemon = pyweb.Daemon(serve)
+        daemon.lock_pidfile('test.pid')
+        try:
+            serve.listen(reuse = True)
+            try: daemon.run()
+            except KeyboardInterrupt: print 'exit.'
+        finally: daemon.free_pidfile()
+    else:
+        serve.listen(reuse = True)
+        try: serve.run()
+        except KeyboardInterrupt: print 'exit.'
+
+if __name__ == '__main__':
+    main(daemon = False)
