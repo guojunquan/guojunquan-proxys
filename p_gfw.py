@@ -5,6 +5,7 @@
 from __future__ import with_statement
 import os
 import sys
+import datetime
 import pyweb
 
 class DomainFilter(object):
@@ -107,28 +108,12 @@ class DispatchGFW(object):
             raise base.HttpException(501)
         finally: del self.working[request]
 
-    html_header = '<html>\n<head><title>%s</title></head>\n<body>\n'
+    tpl_status = pyweb.Template(template = '''<html><head><title>url list</title></head><body>length: {%=len(working)%}<br><table width="100%%"><thead><td>verb</td><td>url</td><td>action name</td><td>Elapse</td><td>from addr</td><td>send count</td><td>recv count</td></thead><tbody>{%for req, dt in working.items():%}{%dd = dtnow - dt%}{%sockaddr = '%s:%d' % (req.sock.from_addr[0], req.sock.from_addr[1])%}<tr><td>{%=req.verb%}</td><td><a href="/cutoff?from={%=sockaddr%}">req.urls.path</a></td><td>{%=req.app%}</td><td>{%=dd.seconds%}.{%=dd.microseconds%}</td><td>{%=sockaddr%}</td><td>req.proxy_count[0]</td><td>req.proxy_count[1]</td></tr>{%end%}</tbody></table></body></html>''')
     def action_status(self, request):
         response = request.make_response()
-        response.append_body(self.html_header % 'url list')
-        table_header = 'length: %d<br><table width="100%%"><thead>\
-<td>verb</td><td>url</td><td>action name</td><td>Elapse</td><td>from addr</td>\
-<td>send count</td><td>recv count</td></thead><tbody>\n' % len(self.working)
-        response.append_body(table_header)
-        dtnow = datetime.datetime.now()
-        for req, dt in self.working.items():
-            dd = dtnow - dt
-            line = '<tr><td>%s</td><td><a href="/cutoff?from=%s:%d">%s</a></td>\
-<td>%s</td><td>%d.%d</td><td>%s:%d</td><td>%d</td><td>%d</td></tr>\n' %\
-                (req.verb, req.from_addr[0], req.from_addr[1], req.url,
-                 req.action.name if hasattr(req.action, 'name') else "",
-                 dd.seconds, dd.microseconds, req.from_addr[0], req.from_addr[1],
-                 req.proxy_count[0] if hasattr(req, 'proxy_count') else 0,
-                 req.proxy_count[1] if hasattr(req, 'proxy_count') else 0,)
-            response.append_body(line)
-        response.append_body('</tbody></table><pre>\n')
-        response.append_body(eventlet.debug.format_hub_listeners())
-        response.append_body('</pre></body>\n</html>')
+        info = {'working': self.working, 'dtnow': datetime.datetime.now()}
+        self.tpl_status.render_res(response, info)
+        response.connection = False
         return response
     url_map['/status'] = action_status
 
@@ -154,7 +139,7 @@ class DispatchGFW(object):
 
     def action_gfwadd(self, request):
         request.recv_body()
-        host = request.get_params()['host']
+        host = request.post_params()['host']
         self.gfw.add(host.strip())
         return request.make_redirect('/gfwlist')
     url_map['/gfwadd'] = action_gfwadd

@@ -61,18 +61,18 @@ def main(daemon = False):
     pyweb.ApacheLog(sys.stdout).set_weblog()
     logging.basicConfig(level = logging.INFO)
     serve = pyweb.HttpServer(dis)
+    serve.listen(reuse = True)
     if daemon:
         daemon = pyweb.Daemon(serve)
-        daemon.lock_pidfile('test.pid')
+        daemon.lock_pidfile('proxy.pid')
         try:
-            serve.listen(reuse = True)
             try: daemon.run()
             except KeyboardInterrupt: print 'exit.'
         finally: daemon.free_pidfile()
     else:
-        serve.listen(reuse = True)
         try: serve.run()
         except KeyboardInterrupt: print 'exit.'
 
 if __name__ == '__main__':
+    make_dis()
     main(daemon = False)
