@@ -85,14 +85,14 @@ class DispatchGFW(object):
         for p in l:
             request.app = p
             try: return p(request)
-            except(EOFError, socket.error, base.HttpException): pass
+            except(EOFError, socket.error, pyweb.HttpException): pass
 
     def __call__(self, request):
         if not request.hostname:
             for url, action in self.url_map.items():
                 if request.urls.path.startswith(url):
                     return action(self, request)
-      	    raise base.NotFoundError(request.urls.path)
+      	    raise pyweb.NotFoundError(request.urls.path)
         request.app = None
         self.working[request] = datetime.datetime.now()
         try:
@@ -105,7 +105,7 @@ class DispatchGFW(object):
                 if response: return response
             response = self.do_list(request, self.gfw_sock)
             if response: return response
-            raise base.HttpException(501)
+            raise pyweb.HttpException(501)
         finally: del self.working[request]
 
     tpl_status = pyweb.Template(template = '''<html><head><title>url list</title></head><body>length: {%=len(working)%}<br><table width="100%%"><thead><td>verb</td><td>url</td><td>action name</td><td>Elapse</td><td>from addr</td><td>send count</td><td>recv count</td></thead><tbody>{%for req, dt in working.items():%}{%dd = dtnow - dt%}{%sockaddr = '%s:%d' % (req.sock.from_addr[0], req.sock.from_addr[1])%}<tr><td>{%=req.verb%}</td><td><a href="/cutoff?from={%=sockaddr%}">req.urls.path</a></td><td>{%=req.app%}</td><td>{%=dd.seconds%}.{%=dd.microseconds%}</td><td>{%=sockaddr%}</td><td>req.proxy_count[0]</td><td>req.proxy_count[1]</td></tr>{%end%}</tbody></table></body></html>''')

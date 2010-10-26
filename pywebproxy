@@ -8,6 +8,7 @@ import logging
 import pyweb
 
 from p_gfw import DispatchGFW
+from p_socks import ProxyDirect
 
 # class Proxy(object):
 
@@ -55,7 +56,7 @@ dis = None
 
 def make_dis():
     global dis
-    dis = DispatchGFW()
+    dis = DispatchGFW(ProxyDirect())
 
 def main(daemon = False):
     pyweb.ApacheLog(sys.stdout).set_weblog()
