@@ -24,12 +24,16 @@ class ProxyRequest(pyweb.HttpRequest):
 
 class ProxyResponse(pyweb.HttpResponse):
 
+    def __init__(self, request, code):
+        super(ProxyResponse, self).__init__(request, code)
+        self.src_sock = request.request.sock
+
     def send_header(self, auto = False):
         if self.header_sended: return
         self.request.responsed = True
         if auto and 'content-length' not in self.header:
             self.set_header('content-length', self.body_len())
-        self.request.request.sock.sendall(self.make_header())
+        self.src_sock.sendall(self.make_header())
         self.header_sended = True
 
     def append_body(self, data):
@@ -37,8 +41,8 @@ class ProxyResponse(pyweb.HttpResponse):
 
     def send_body(self, data):
         ''' 发送一个数据片段 '''
-        if not self.chunk_mode: self.request.request.sock.sendall(data)
-        else: self.request.request.sock.sendall('%x\r\n%s\r\n' %(len(data), data))
+        if not self.chunk_mode: self.src_sock.sendall(data)
+        else: self.src_sock.sendall('%x\r\n%s\r\n' %(len(data), data))
 
 class ProxyClient(pyweb.HttpClient):
     RequestCls = ProxyRequest
