@@ -29,6 +29,7 @@ class ProxyRequest(pyweb.HttpRequest):
         return response
 
 class ProxyResponse(pyweb.HttpResponse):
+    DEFAULT_HASBODY = True
 
     def __init__(self, request, code):
         super(ProxyResponse, self).__init__(request, code)
