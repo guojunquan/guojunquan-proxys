@@ -108,7 +108,7 @@ class DispatchGFW(object):
             raise pyweb.HttpException(501)
         finally: del self.working[request]
 
-    tpl_status = pyweb.Template(template = '''<html><head><title>url list</title></head><body>length: {%=len(working)%}<br><table width="100%%"><thead><td>verb</td><td>url</td><td>action name</td><td>Elapse</td><td>from addr</td><td>send count</td><td>recv count</td></thead><tbody>{%for req, dt in working.items():%}{%dd = dtnow - dt%}{%sockaddr = '%s:%d' % (req.sock.from_addr[0], req.sock.from_addr[1])%}<tr><td>{%=req.verb%}</td><td><a href="/cutoff?from={%=sockaddr%}">req.urls.path</a></td><td>{%=req.app%}</td><td>{%=dd.seconds%}.{%=dd.microseconds%}</td><td>{%=sockaddr%}</td><td>req.proxy_count[0]</td><td>req.proxy_count[1]</td></tr>{%end%}</tbody></table></body></html>''')
+    tpl_status = pyweb.Template(template = '''<html><head><title>url list</title></head><body>length: {%=len(working)%}<br><table width="100%%"><thead><td>verb</td><td>url</td><td>action name</td><td>Elapse</td><td>from addr</td><td>send count</td><td>recv count</td></thead><tbody>{%for req, dt in working.items():%}{%dd = dtnow - dt%}{%sockaddr = '%s:%d' % (req.sock.from_addr[0], req.sock.from_addr[1])%}<tr><td>{%=req.verb%}</td><td><a href="/cutoff?from={%=sockaddr%}">{%=req.url%}</a></td><td>{%=req.app%}</td><td>{%=dd.seconds%}.{%=dd.microseconds%}</td><td>{%=sockaddr%}</td><td>req.proxy_count[0]</td><td>req.proxy_count[1]</td></tr>{%end%}</tbody></table></body></html>''')
     def action_status(self, request):
         response = request.make_response()
         info = {'working': self.working, 'dtnow': datetime.datetime.now()}

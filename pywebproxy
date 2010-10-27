@@ -8,7 +8,8 @@ import logging
 import pyweb
 
 from p_gfw import DispatchGFW
-from p_socks import ProxyDirect
+from p_http import ProxyDirect
+from p_forward import ProxyForward
 
 # class Proxy(object):
 
@@ -56,11 +57,13 @@ dis = None
 
 def make_dis():
     global dis
-    dis = DispatchGFW(ProxyDirect())
+    # dis = DispatchGFW(ProxyDirect())
+    dis = DispatchGFW(ProxyForward('localhost', 8000))
 
 def main(daemon = False):
+    # debug_file = open('access.txt', 'w')
     pyweb.ApacheLog(sys.stdout).set_weblog()
-    logging.basicConfig(level = logging.INFO)
+    logging.basicConfig(level = logging.DEBUG, filename = 'error.txt')
     serve = pyweb.HttpServer(dis)
     serve.listen(reuse = True)
     if daemon:
@@ -71,8 +74,8 @@ def main(daemon = False):
             except KeyboardInterrupt: print 'exit.'
         finally: daemon.free_pidfile()
     else:
-        try: serve.run()
-        except KeyboardInterrupt: print 'exit.'
+        serve.run()
+        # except KeyboardInterrupt: print 'exit.'
 
 if __name__ == '__main__':
     make_dis()
