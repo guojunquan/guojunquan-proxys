@@ -9,8 +9,11 @@ import os
 import sys
 import socket
 import traceback
+import eventlet
 import pyweb
 import socks
+
+spawn = eventlet.greenthread.spawn
 
 class ProxyRequest(pyweb.HttpRequest):
 
@@ -55,6 +58,9 @@ class ProxyResponse(pyweb.HttpResponse):
         self.trans_len[1] += len(data)
         self.send_body(data)
 
+    def end_body(self):
+        if self.chunk_mode: self.src_sock.sendall('0\r\n\r\n')
+        
     def send_body(self, data):
         if not self.chunk_mode: self.src_sock.sendall(data)
         else: self.src_sock.sendall('%x\r\n%s\r\n' %(len(data), data))
@@ -67,34 +73,42 @@ class ProxyBase(object):
 
     def __call__(self, request):
         if request.verb in self.VERB_SOCKS:
+            if not hasattr(self, 'do_socks'):
+                raise pyweb.MethodNotAllowedError()
             return self.do_socks(request)
         else: return self.do_http(request)
 
 class ProxyDirect(ProxyBase):
     name = 'direct'
+    DefaultClient = pyweb.EventletClient
 
-    def do_socks(self, request):
-        response = request.make_response()
-        response.send_header()
+    def sock_connect(self, sock, request):
         hostname, sp, port = request.hostname.partition(':')
         if port: port = int(port)
         else: port = 80
-        sock = pyweb.EventletClient()
+        sock.connect(hostname, port)
+
+    def do_socks(self, request):
+        response = request.make_response()
+        sock = self.DefaultClient()
         try:
-            try: sock.connect(hostname, port)
+            try: self.sock_connect(sock, request)
             except (EOFError, socket.error): raise pyweb.BadGatewayError()
+            response.send_header()
             request.timeout.cancel()
-            request.sock.server.pool.spawn_n(self.trans_loop,
-                                             request.sock, sock)
+            th = spawn(self.trans_loop, request.sock, sock)
             self.trans_loop(sock, request.sock)
+            th.wait()
         finally: sock.close()
+        response.body_sended, response.connection = True, False
         return response
     def trans_loop(self, s1, s2):
         try:
-            while True: s2.sendall(s1.recv_once())
+            while True:
+                d = s1.recv_once()
+                s2.sendall(d)
         except EOFError, socket.error: pass
-        # s1.close()
-        # s2.close()
+        print 'trans_loop end'
 
     def make_client(self): return ProxyClient()
     def do_http(self, request):
@@ -130,23 +144,27 @@ class ProxyForward(ProxyDirect):
     def __init__(self, hostname, port):
         self.hostname, self.port = hostname, port
 
+    def sock_connect(self, sock, request):
+        sock.connect(self.hostname, self.port)
+
     def do_socks(self, request):
-        sock = pyweb.EventletClient()
+        response = request.make_response()
+        sock = self.DefaultClient()
         try:
-            try: sock.connect(self.hostname, self.port)
+            try: self.sock_connect(sock, request)
             except (EOFError, socket.error): raise pyweb.BadGatewayError()
-            request.timeout.cancel()
 
             sock.sendall(request.make_header() + "".join(request.content))
-            response = request.make_response()
             res_header = sock.recv_until()
-            response.sock.sendall(res_header + '\r\n\r\n')
+            request.sock.sendall(res_header + '\r\n\r\n')
             response.header_sended = True
 
-            request.sock.server.pool.spawn_n(self.trans_loop,
-                                             request.sock, sock)
+            request.timeout.cancel()
+            th = spawn(self.trans_loop, request.sock, sock)
             self.trans_loop(sock, request.sock)
+            th.wait()
         finally: sock.close()
+        response.body_sended, response.connection = True, False
         return response
 
     def make_client(self): return ForwardClient(self.hostname, self.port)
@@ -167,22 +185,11 @@ class SocksClient(pyweb.HttpClient):
 
 class ProxySocks(ProxyDirect):
     name = 'socks'
+    DefaultClient = socks.SocksClient
 
     def __init__(self, hostname, port):
         self.hostname, self.port = hostname, port
 
-    def do_socks(self, request):
-        response = request.make_response()
-        response.send_header()
-        sock = socks.SocksClient()
-        try:
-            try: sock.auto_connect(request.hostname, self.hostname, self.port)
-            except (EOFError, socket.error): raise pyweb.BadGatewayError()
-            request.timeout.cancel()
-            request.sock.server.pool.spawn_n(self.trans_loop,
-                                             request.sock, sock)
-            self.trans_loop(sock, request.sock)
-        finally: sock.close()
-        return response
-
+    def sock_connect(self, sock, request):
+        sock.auto_connect(request.hostname, self.hostname, self.port)
     def make_client(self): return SocksClient(self.hostname, self.port)

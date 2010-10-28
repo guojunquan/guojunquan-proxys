@@ -12,7 +12,7 @@ from p_http import ProxyDirect, ProxyForward, ProxySocks
 
 def make_dis():
     dis = DispatchGFW(ProxyDirect())
-    # dis.add_sock(ProxySocks('localhost', 7777))
+    dis.add_sock(ProxySocks('localhost', 7777))
     return dis
 dis = make_dis()
 
