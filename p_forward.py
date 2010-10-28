@@ -10,7 +10,7 @@ import sys
 import pyweb
 import p_http
 
-class ProxyRequest(p_http.ProxyRequest):
+class ForwardRequest(p_http.ProxyRequest):
 
     def make_request(self, request):
         super(ProxyRequest, self).make_request(request)
@@ -19,7 +19,7 @@ class ProxyRequest(p_http.ProxyRequest):
             request.verb, request.url, request.version
         self.proc_header()
 
-class ProxyClient(pyweb.HttpClient):
+class ForwardClient(pyweb.HttpClient):
     RequestCls = ProxyRequest
 
     def __init__(self, hostname, port): self.hostname, self.port = hostname, port
@@ -51,4 +51,4 @@ class ProxyForward(p_http.ProxyDirect):
         finally: sock.close()
         return response
 
-    def make_client(self): return ProxyClient(self.hostname, self.port)
+    def make_client(self): return ForwardRequest(self.hostname, self.port)

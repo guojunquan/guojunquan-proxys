@@ -7,6 +7,7 @@
 from __future__ import with_statement
 import os
 import sys
+import socket
 import pyweb
 
 class ProxyRequest(pyweb.HttpRequest):
@@ -42,14 +43,16 @@ class ProxyResponse(pyweb.HttpResponse):
         self.src_sock.sendall(self.make_header())
         self.header_sended = True
 
+    def recv_body(self, hasbody = False):
+        self.send_header()
+        super(ProxyResponse, self).recv_body(hasbody)
+
     def body_len(self): return self.trans_len[1]
     def append_body(self, data):
-        if self.trans_len[1] == 0: self.send_header()
         self.trans_len[1] += len(data)
         self.send_body(data)
 
     def send_body(self, data):
-        ''' 发送一个数据片段 '''
         if not self.chunk_mode: self.src_sock.sendall(data)
         else: self.src_sock.sendall('%x\r\n%s\r\n' %(len(data), data))
 
@@ -83,15 +86,19 @@ class ProxyDirect(ProxyBase):
         finally: sock.close()
         return response
     def trans_loop(self, s1, s2):
-        while True: s2.sendall(s1.recv_once())
+        try:
+            while True: s2.sendall(s1.recv_once())
+        except EOFError, socket.error: pass
         s1.close()
         s2.close()
 
     def make_client(self): return ProxyClient()
     def do_http(self, request):
-        request.recv_body()
-        client = self.make_client()
-        preq = client.make_request(request)
-        response = client.handler(preq)
-        response.body_sended = True
+        try:
+            request.recv_body()
+            client = self.make_client()
+            preq = client.make_request(request)
+            response = client.handler(preq)
+            response.body_sended = True
+        except: print traceback.format_exc()
         return response

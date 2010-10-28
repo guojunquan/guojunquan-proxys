@@ -9,7 +9,7 @@ import pyweb
 
 from p_gfw import DispatchGFW
 from p_http import ProxyDirect
-from p_forward import ProxyForward
+# from p_forward import ProxyForward
 
 # class Proxy(object):
 
@@ -58,7 +58,7 @@ dis = None
 def make_dis():
     global dis
     dis = DispatchGFW(ProxyDirect())
-    # dis = DispatchGFW(ProxyForward('192.168.1.51', 8000))
+    # dis = DispatchGFW(ProxyForward('localhost', 8000))
 
 def main(daemon = False):
     # debug_file = open('access.txt', 'w')
