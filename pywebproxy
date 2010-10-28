@@ -8,56 +8,13 @@ import logging
 import pyweb
 
 from p_gfw import DispatchGFW
-from p_http import ProxyDirect, ProxyForward
-
-# class Proxy(object):
-
-#     def __init__(self):
-#         default = HttpProxyAction(DummyConnPool(factory = TcpEventletClient))
-#         self.action = HttpGfwProxyDispatcher(default)
-
-#     def run(self, **kargs):
-#         server = HttpServer(self.action)
-#         server.listen(**kargs)
-#         server.run()
-
-#     def addhttp(self, hostname):
-#         forward = HttpProxyForwardAction(DummyConnPool(), hostname)
-#         # upstream http proxy can use CONNECT, so it's same as sock proxy
-#         self.action.add_sock(forward)
-
-#     def addsocks(self, **kargs):
-#         if 'rdns' not in kargs: kargs['rdns'] = True
-#         if 'proxytype' not in kargs: kargs['proxytype'] = socks.PROXY_TYPE_SOCKS5
-#         pool = DummyConnPool(factory = socks.TcpSocksClient, kargs = kargs)
-#         sockproxy = HttpProxyAction(pool)
-#         sockproxy.name = 'socks'
-#         self.action.add_sock(sockproxy)
-
-#     def addhoh(self, url):
-#         pool = EventletConnPool(factory = TcpEventletClient,
-#                                  max_conn = 10, max_keep = 0)
-#         # pool = DummyConnPool(factory = TcpEventletClient)
-#         forward = HttpOverHttpProxy(pool, url)
-#         self.action.add_http(forward)
-
-# if __name__ == "__main__":
-#     log.log = log.Logging("~/access.log", "~/error.log", level = logging.INFO)
-#     try:
-#         p = Proxy()
-#         if len(sys.argv) > 1:
-#             print 'http over http on'
-#             p.addhoh('http://shell909090.com/cgi-bin/test.py')
-#         p.addsocks(addr = '127.0.0.1', port = 7777)
-#         p.run()
-#     except KeyboardInterrupt: log.log.write_stdout("exit.\r\n")
-
-dis = None
+from p_http import ProxyDirect, ProxyForward, ProxySocks
 
 def make_dis():
-    global dis
-    # dis = DispatchGFW(ProxyDirect())
-    dis = DispatchGFW(ProxyForward('localhost', 8000))
+    dis = DispatchGFW(ProxyDirect())
+    # dis.add_sock(ProxySocks('localhost', 7777))
+    return dis
+dis = make_dis()
 
 def main(daemon = False):
     # debug_file = open('access.txt', 'w')
@@ -76,6 +33,4 @@ def main(daemon = False):
         serve.run()
         # except KeyboardInterrupt: print 'exit.'
 
-if __name__ == '__main__':
-    make_dis()
-    main(daemon = False)
+if __name__ == '__main__': main(daemon = False)

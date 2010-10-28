@@ -39,7 +39,7 @@ class Socks5AuthError(GeneralProxyError):
     def __init__(self, *params):
         super(Socks5AuthError, self).__init__(*params)
 
-class TcpSocksClient(EventletClient):
+class SocksClient(EventletClient):
 
     def socks5_auth(self, username, password):
         if username is None or password is None: self.sendall("\x05\x01\x00")
@@ -103,18 +103,19 @@ class TcpSocksClient(EventletClient):
         self.__proxysockname =(socket.inet_ntoa(resp[4:]),
                                 struct.unpack(">H", resp[2:4])[0])
 
-    def connect(self, hostname, addr, port = 1080, username = None,
-                 password = None, rdns = True, proxytype = PROXY_TYPE_SOCKS5):
-        super(TcpSocksClient, self).connect('%s:%d' %(addr, port,))
-        hostinfo = hostname.split(':')
-        if len(hostinfo) == 1: target_port = 80
-        else: target_port = int(hostinfo[1])
+    def auto_connect(self, hostname, addr, port = 1080,
+                     username = None, password = None, rdns = True,
+                     proxytype = PROXY_TYPE_SOCKS5):
+        super(SocksClient, self).connect(addr, port)
+        hostaddr, sp, port = hostname.partition(':')
+        if port: port = int(port)
+        else: port = 80
         try:
             if proxytype == PROXY_TYPE_SOCKS5:
                 self.socks5_auth(username, password)
-                self.socks5_connect(hostinfo[0], target_port, rdns)
+                self.socks5_connect(hostaddr, port, rdns)
             elif proxytype == PROXY_TYPE_SOCKS4:
-                self.socks4_connect(hostinfo[0], target_port, username, rdns)
+                self.socks4_connect(hostaddr, port, username, rdns)
         except GeneralProxyError:
-            self.sock.close()
+            self.close()
             raise
