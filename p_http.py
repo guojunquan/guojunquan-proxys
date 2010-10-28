@@ -8,6 +8,7 @@ from __future__ import with_statement
 import os
 import sys
 import socket
+import traceback
 import pyweb
 
 class ProxyRequest(pyweb.HttpRequest):
@@ -17,6 +18,7 @@ class ProxyRequest(pyweb.HttpRequest):
         self.request, self.header = request, request.header
         self.verb, self.version = request.verb, request.version
         self.proc_header()
+
     def proc_header(self):
         if self.get_header('proxy-connection', 'close') == 'keep-alive':
             self.connection = True
@@ -102,3 +104,48 @@ class ProxyDirect(ProxyBase):
             response.body_sended = True
         except: print traceback.format_exc()
         return response
+
+class ForwardRequest(p_http.ProxyRequest):
+
+    def make_request(self, request):
+        super(ForwardRequest, self).make_request(request)
+        self.request, self.header = request, request.header
+        self.verb, self.url, self.version = \
+            request.verb, request.url, request.version
+        self.proc_header()
+
+class ForwardClient(pyweb.HttpClient):
+    RequestCls = ForwardRequest
+
+    def __init__(self, hostname, port):
+        self.hostname, self.port = hostname, port
+    def make_sock(self, sockaddr):
+        sock = pyweb.EventletClient()
+        sock.connect(self.hostname, self.port)
+        return sock
+
+class ProxyForward(p_http.ProxyDirect):
+    name = 'forward'
+
+    def __init__(self, hostname, port):
+        self.hostname, self.port = hostname, port
+
+    def do_socks(self, request):
+        sock = pyweb.EventletClient()
+        try:
+            try: sock.connect(self.hostname, self.port)
+            except (EOFError, socket.error): raise pyweb.BadGatewayError()
+            request.timeout.cancel()
+
+            sock.sendall(request.make_header() + "".join(request.content))
+            response = request.make_response()
+            res_header = sock.recv_until()
+            response.sock.sendall(res_header + '\r\n\r\n')
+            response.header_sended = True
+
+            request.sock.server.pool.spawn_n(self.trans_loop, request.sock, sock)
+            self.trans_loop(sock, request.sock)
+        finally: sock.close()
+        return response
+
+    def make_client(self): return ForwardClient(self.hostname, self.port)
