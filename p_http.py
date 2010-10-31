@@ -107,8 +107,8 @@ class ProxyDirect(ProxyBase):
             while True:
                 d = s1.recv_once()
                 s2.sendall(d)
-        except EOFError, socket.error: pass
-        print 'trans_loop end'
+        # TODO: just ignore EOFError, BreakPipe, socket.error, logging others
+        except: pass
 
     def make_client(self): return ProxyClient()
     def do_http(self, request):
