@@ -10,18 +10,16 @@ import pyweb
 from p_gfw import DispatchGFW
 from p_http import ProxyDirect, ProxyForward, ProxySocks
 
-def make_dis():
-    dis = DispatchGFW(ProxyDirect())
-    dis.add_sock(ProxySocks('localhost', 7777))
-    return dis
-dis = make_dis()
+dis = ProxyDirect()
+# dis = DispatchGFW(ProxyDirect())
+# dis.add_sock(ProxySocks('localhost', 7777))
 
 def main(daemon = False):
     # debug_file = open('access.txt', 'w')
     pyweb.ApacheLog(sys.stdout).set_weblog()
-    logging.basicConfig(level = logging.DEBUG, filename = 'error.txt')
+    logging.basicConfig(level = logging.INFO)# , filename = 'error.txt')
     serve = pyweb.HttpServer(dis)
-    serve.listen(reuse = True)
+    serve.listen()
     if daemon:
         daemon = pyweb.Daemon(serve)
         daemon.lock_pidfile('proxy.pid')
