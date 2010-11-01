@@ -8,16 +8,15 @@ import logging
 import pyweb
 
 from p_gfw import DispatchGFW
-from p_http import ProxyDirect, ProxySocks
-# ProxyForward
+from p_http import ProxyDirect, ProxyForward, ProxySocks
 
 dis = DispatchGFW(ProxyDirect())
 dis.add_sock(ProxySocks('localhost', 7777))
 
 def main(daemon = False):
-    # debug_file = open('access.txt', 'w')
-    pyweb.ApacheLog(sys.stdout).set_weblog()
-    logging.basicConfig(level = logging.INFO)# , filename = 'error.txt')
+    access_file = open('access.txt', 'w')
+    pyweb.ApacheLog(access_file).set_weblog()
+    logging.basicConfig(level = logging.INFO, filename = 'error.txt')
     serve = pyweb.HttpServer(dis)
     serve.listen()
     if daemon:
