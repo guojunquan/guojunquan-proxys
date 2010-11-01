@@ -5,6 +5,7 @@
 from __future__ import with_statement
 import os
 import sys
+import socket
 import datetime
 import pyweb
 
@@ -85,7 +86,7 @@ class DispatchGFW(object):
         for p in l:
             request.app = p
             try: return p(request)
-            except(EOFError, socket.error, pyweb.HttpException): pass
+            except (EOFError, socket.error, pyweb.HttpException), err: pass
 
     def __call__(self, request):
         if not request.hostname:
@@ -128,7 +129,6 @@ class DispatchGFW(object):
     
     def action_gfwdel(self, request):
         host = request.get_params()['host']
-        print host
         if self.gfw.remove(host.strip().lower()):
             return request.make_redirect('/gfwlist')
         response = request.make_response(500)

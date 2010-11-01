@@ -8,11 +8,11 @@ import logging
 import pyweb
 
 from p_gfw import DispatchGFW
-from p_http import ProxyDirect, ProxyForward, ProxySocks
+from p_http import ProxyDirect, ProxySocks
+# ProxyForward
 
-dis = ProxyDirect()
-# dis = DispatchGFW(ProxyDirect())
-# dis.add_sock(ProxySocks('localhost', 7777))
+dis = DispatchGFW(ProxyDirect())
+dis.add_sock(ProxySocks('localhost', 7777))
 
 def main(daemon = False):
     # debug_file = open('access.txt', 'w')
@@ -28,7 +28,7 @@ def main(daemon = False):
             except KeyboardInterrupt: print 'exit.'
         finally: daemon.free_pidfile()
     else:
-        serve.run()
-        # except KeyboardInterrupt: print 'exit.'
+        try: serve.run()
+        except KeyboardInterrupt: print 'exit.'
 
 if __name__ == '__main__': main(daemon = False)
