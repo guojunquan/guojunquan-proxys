@@ -4,6 +4,7 @@
 # @author: shell.xu
 import socket
 import struct
+import eventlet.pools
 from pyweb import EventletClient
 
 PROXY_TYPE_SOCKS4 = 1
@@ -52,9 +53,8 @@ class SocksClient(EventletClient):
             authstat = self.recv_length(2)
             if authstat[0] != "\x01": raise GeneralProxyError(1)
             if authstat[1] != "\x00": raise Socks5AuthError(3)
-        else:
-            if chosenauth[1] == "\xFF": raise Socks5AuthError(2)
-            else: raise GeneralProxyError(1)
+        elif chosenauth[1] == "\xFF": raise Socks5AuthError(2)
+        else: raise GeneralProxyError(1)
             
     def socks5_connect(self, addr, port, rdns):
         try:
@@ -107,15 +107,31 @@ class SocksClient(EventletClient):
                      username = None, password = None, rdns = True,
                      proxytype = PROXY_TYPE_SOCKS5):
         super(SocksClient, self).connect(addr, port)
-        hostaddr, sp, port = hostname.partition(':')
-        if port: port = int(port)
-        else: port = 80
+        hostaddr, sp, hostport = hostname.partition(':')
+        if hostport: hostport = int(hostport)
+        else: hostport = 80
+        self.proxy_connect(hostaddr, hostport, username,
+                           password, rdns, proxytype)
+
+    def proxy_connect(self, addr, port, username = None, password = None,
+                      rdns = True, proxytype = PROXY_TYPE_SOCKS5):
         try:
             if proxytype == PROXY_TYPE_SOCKS5:
                 self.socks5_auth(username, password)
-                self.socks5_connect(hostaddr, port, rdns)
+                self.socks5_connect(addr, port, rdns)
             elif proxytype == PROXY_TYPE_SOCKS4:
-                self.socks4_connect(hostaddr, port, username, rdns)
+                self.socks4_connect(addr, port, username, rdns)
         except GeneralProxyError:
             self.close()
             raise
+
+class SocksClientPool(eventlet.pools.Pool):
+
+    def __init__(self, host, port, max_size):
+        super(SocksClientPool, self).__init__(max_size = max_size)
+        self.sockaddr = (host, port)
+
+    def create(self):
+        sock = SocksClient()
+        sock.connect(self.sockaddr[0], self.sockaddr[1])
+        return sock
