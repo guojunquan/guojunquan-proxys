@@ -25,6 +25,7 @@ class ProxyRequest(pyweb.HttpRequest):
         self = pyweb.HttpRequest.make_request(request.url, self)
         self.request, self.header = request, request.header
         self.verb, self.version = request.verb, request.version
+        self.content = request.content
         self.proc_header()
         return self
 
@@ -104,9 +105,7 @@ class ProxyDirect(ProxyBase):
         return response
     def trans_loop(self, s1, s2):
         try:
-            while True:
-                d = s1.recv_once()
-                s2.sendall(d)
+            for d in s1.datas(): s2.sendall(d)
         # TODO: just ignore EOFError, BreakPipe, socket.error, logging others
         except: pass
 
