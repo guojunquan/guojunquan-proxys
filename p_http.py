@@ -77,11 +77,6 @@ class ProxyBase(object):
             return self.do_socks(request)
         else: return self.do_http(request)
 
-class SockContext(object):
-    def __init__(self, sock): self.sock = sock
-    def __enter__(self): return self.sock
-    def __exit__(self, *exc_info): self.sock.close()
-
 class ProxyDirect(ProxyBase):
     name = 'direct'
 
@@ -101,7 +96,7 @@ class ProxyDirect(ProxyBase):
             try: self.connect(sock, (hostname, port))
             except (EOFError, socket.error): raise pyweb.BadGatewayError()
             response.send_header()
-            # request.timeout.cancel()
+            request.timeout.cancel()
             th = spawn(self.trans_loop, request.sock, sock)
             self.trans_loop(sock, request.sock)
             th.wait()
@@ -137,9 +132,9 @@ class ForwardRequest(ProxyRequest):
 class ProxyForward(ProxyDirect):
     name = 'forward'
 
-    def __init__(self, hostname, port, max_size = 10):
+    def __init__(self, hostname, port, max_size = 20):
         self.hostname, self.port = hostname, port
-        self.pool = eventlet.pools.TokenPool(max_size)
+        self.pool = eventlet.pools.TokenPool(max_size = max_size)
 
     @contextmanager
     def item(self):
@@ -175,9 +170,9 @@ class ProxyForward(ProxyDirect):
 class ProxySocks(ProxyDirect):
     name = 'socks'
 
-    def __init__(self, hostname, port, max_size = 10):
+    def __init__(self, hostname, port, max_size = 20):
         self.hostname, self.port = hostname, port
-        self.pool = eventlet.pools.TokenPool(max_size)
+        self.pool = eventlet.pools.TokenPool(max_size = max_size)
 
     @contextmanager
     def item(self):
@@ -188,10 +183,3 @@ class ProxySocks(ProxyDirect):
             finally: sock.close()
     def connect(self, sock, sockaddr):
         sock.proxy_connect(sockaddr[0], sockaddr[1])
-
-    def do_http(self, request):
-        request.recv_body()
-        preq = ProxyRequest.make_request(request)
-        response = pyweb.http_client(preq, sock_factory = self)
-        response.body_sended = True
-        return response
