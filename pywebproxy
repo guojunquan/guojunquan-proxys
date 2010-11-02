@@ -14,11 +14,11 @@ dis = DispatchGFW(ProxyDirect())
 dis.add_sock(ProxySocks('localhost', 7777))
 
 def main(daemon = False):
-    access_file = open('access.txt', 'w')
+    access_file = open('access.txt', 'a')
     pyweb.ApacheLog(access_file).set_weblog()
     logging.basicConfig(level = logging.INFO, filename = 'error.txt')
     serve = pyweb.HttpServer(dis)
-    serve.listen()
+    serve.listen(port = 8132)
     if daemon:
         daemon = pyweb.Daemon(serve)
         daemon.lock_pidfile('proxy.pid')

@@ -8,6 +8,7 @@ from __future__ import with_statement
 import os
 import sys
 import socket
+import logging
 import traceback
 from contextlib import contextmanager
 import eventlet
@@ -25,7 +26,7 @@ class ProxyRequest(pyweb.HttpRequest):
         self = pyweb.HttpRequest.make_request(request.url, self)
         self.request, self.header = request, request.header
         self.verb, self.version = request.verb, request.version
-        self.content = request.content
+        self.content, self.trans_len = request.content, [0, 0]
         self.proc_header()
         return self
 
@@ -44,8 +45,7 @@ class ProxyResponse(pyweb.HttpResponse):
 
     def __init__(self, request, code):
         super(ProxyResponse, self).__init__(request, code)
-        self.connection, self.trans_len = False, [0, 0]
-        self.src_sock = request.request.sock
+        self.connection, self.src_sock = False, request.request.sock
 
     def send_header(self):
         if self.header_sended: return
@@ -59,7 +59,7 @@ class ProxyResponse(pyweb.HttpResponse):
 
     def body_len(self): return self.trans_len[1]
     def append_body(self, data):
-        self.trans_len[1] += len(data)
+        self.request.trans_len[1] += len(data)
         self.send_body(data)
     def end_body(self):
         if self.chunk_mode: self.src_sock.sendall('0\r\n\r\n')
@@ -97,17 +97,21 @@ class ProxyDirect(ProxyBase):
             try: self.connect(sock, (hostname, port))
             except (EOFError, socket.error): raise pyweb.BadGatewayError()
             response.send_header()
+            request.trans_len = [0, 0]
             request.timeout.cancel()
-            th = spawn(self.trans_loop, request.sock, sock)
-            self.trans_loop(sock, request.sock)
+            th = spawn(self.trans_loop, request.sock, sock,
+                       request.trans_len, 0)
+            self.trans_loop(sock, request.sock, request.trans_len, 1)
             th.wait()
         response.body_sended, response.connection = True, False
         return response
-    def trans_loop(self, s1, s2):
+    def trans_loop(self, s1, s2, counter, num):
         try:
-            for d in s1.datas(): s2.sendall(d)
+            for d in s1.datas():
+                counter[num] += len(d)
+                s2.sendall(d)
         # TODO: just ignore EOFError, BreakPipe, socket.error, logging others
-        except: pass
+        except: logging.error(''.join(traceback.format_exc()))
 
     def do_http(self, request):
         request.recv_body()
@@ -151,10 +155,12 @@ class ProxyForward(ProxyDirect):
             res_header = sock.recv_until()
             request.sock.sendall(res_header + '\r\n\r\n')
             response.header_sended = True
+            request.trans_len = [0, 0]
 
             request.timeout.cancel()
-            th = spawn(self.trans_loop, request.sock, sock)
-            self.trans_loop(sock, request.sock)
+            th = spawn(self.trans_loop, request.sock, sock,
+                       request.trans_len, 0)
+            self.trans_loop(sock, request.sock, request.trans_len, 1)
             th.wait()
         response.body_sended, response.connection = True, False
         return response
