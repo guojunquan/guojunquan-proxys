@@ -50,6 +50,8 @@ class ProxyResponse(pyweb.HttpResponse):
     def send_header(self):
         if self.header_sended: return
         self.request.responsed = True
+        if self.get_header('connection', '') == 'close':
+            self.connection = False
         self.src_sock.sendall(self.make_header())
         self.header_sended = True
 
@@ -57,12 +59,12 @@ class ProxyResponse(pyweb.HttpResponse):
         self.send_header()
         super(ProxyResponse, self).recv_body(hasbody)
 
-    def body_len(self): return self.trans_len[1]
+    def body_len(self): return self.request.trans_len[1]
     def append_body(self, data):
         self.request.trans_len[1] += len(data)
         self.send_body(data)
     def end_body(self):
-        if self.chunk_mode: self.src_sock.sendall('0\r\n\r\n')
+        if self.chunk_mode: self.send_body('')
         
     def send_body(self, data):
         if not self.chunk_mode: self.src_sock.sendall(data)
@@ -110,7 +112,7 @@ class ProxyDirect(ProxyBase):
             for d in s1.datas():
                 counter[num] += len(d)
                 s2.sendall(d)
-        # TODO: just ignore EOFError, BreakPipe, socket.error, logging others
+        except EOFError, socket.error: pass
         except: logging.error(''.join(traceback.format_exc()))
 
     def do_http(self, request):
