@@ -30,4 +30,7 @@ def main(daemon = False):
         try: serve.run()
         except KeyboardInterrupt: print 'exit.'
 
-if __name__ == '__main__': main(daemon = False)
+if __name__ == '__main__':
+    main(daemon = False)
+    # import cProfile
+    # cProfile.run("main(daemon = False)")
