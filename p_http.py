@@ -27,14 +27,14 @@ class ProxyRequest(pyweb.HttpRequest):
         self.request, self.header = request, request.header
         self.verb, self.version = request.verb, request.version
         self.content, self.trans_len = request.content, [0, 0]
-        self.proc_header()
+        self.proc_client_header()
         return self
 
-    def proc_header(self):
+    def proc_client_header(self):
         self.connection = \
             self.get_header('proxy-connection', 'close') == 'keep-alive'
-        del_keys = [i for i in self.header.keys() if i.startswith('proxy-')]
-        for k in del_keys: del self.header[k]
+        self.header = dict([(k, v) for k, v in self.header.items()
+                            if not k.startswith('proxy-')])
 
     def make_response(self, code = 200):
         response = ProxyResponse(self, code)
@@ -131,7 +131,7 @@ class ForwardRequest(ProxyRequest):
         self.request, self.header = request, request.header
         self.verb, self.url, self.version = \
             request.verb, request.url, request.version
-        self.proc_header()
+        self.proc_client_header()
         return self
 
 class ProxyForward(ProxyDirect):
