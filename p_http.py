@@ -11,11 +11,13 @@ import socket
 import logging
 import traceback
 from contextlib import contextmanager
+from eventlet.timeout import Timeout as eventTimeout
 import eventlet
 import eventlet.pools
 import pyweb
 import socks
 
+socks_timeout = 1200
 spawn = eventlet.greenthread.spawn
 
 class ProxyRequest(pyweb.HttpRequest):
@@ -101,6 +103,7 @@ class ProxyDirect(ProxyBase):
             response.send_header()
             request.trans_len = [0, 0]
             request.timeout.cancel()
+            # request.timeout = eventTimeout(socks_timeout, pyweb.TimeoutError)
             th = spawn(self.trans_loop, request.sock, sock,
                        request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
@@ -160,6 +163,7 @@ class ProxyForward(ProxyDirect):
             request.trans_len = [0, 0]
 
             request.timeout.cancel()
+            # request.timeout = eventTimeout(socks_timeout, pyweb.TimeoutError)
             th = spawn(self.trans_loop, request.sock, sock,
                        request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
