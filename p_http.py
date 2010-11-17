@@ -11,14 +11,11 @@ import socket
 import logging
 import traceback
 from contextlib import contextmanager
-from eventlet.timeout import Timeout as eventTimeout
-import eventlet
-import eventlet.pools
+from greenlet import greenlet
 import pyweb
 import socks
 
 socks_timeout = 1200
-spawn = eventlet.greenthread.spawn
 
 class ProxyRequest(pyweb.HttpRequest):
 
@@ -87,7 +84,7 @@ class ProxyDirect(ProxyBase):
 
     @contextmanager
     def item(self):
-        sock = pyweb.EventletClient()
+        sock = pyweb.EpollSocket()
         try: yield sock
         finally: sock.close()
     def connect(self, sock, sockaddr): sock.connect(sockaddr[0], sockaddr[1])
@@ -102,12 +99,13 @@ class ProxyDirect(ProxyBase):
             except (EOFError, socket.error): raise pyweb.BadGatewayError()
             response.send_header()
             request.trans_len = [0, 0]
-            request.timeout.cancel()
-            # request.timeout = eventTimeout(socks_timeout, pyweb.TimeoutError)
-            th = spawn(self.trans_loop, request.sock, sock,
-                       request.trans_len, 0)
+            pyweb.bus.unset_timeout(request.timeout)
+            request.timeout = pyweb.bus.set_timeout(socks_timeout,
+                                                    basehttp.TimeoutError)
+            gr = greenlet(self.trans_loop)
+            gr.switch(request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            th.wait()
+            while gr: gr.switch()
         response.body_sended, response.connection = True, False
         return response
     def trans_loop(self, s1, s2, counter, num):
@@ -142,12 +140,12 @@ class ProxyForward(ProxyDirect):
 
     def __init__(self, hostname, port, max_size = 20):
         self.hostname, self.port = hostname, port
-        self.pool = eventlet.pools.TokenPool(max_size = max_size)
+        self.pool = pyweb.TokenPool(max_size)
 
     @contextmanager
     def item(self):
         with self.pool.item():
-            sock = pyweb.EventletClient()
+            sock = pyweb.EpollSocket()
             sock.connect(self.hostname, self.port)
             try: yield sock
             finally: sock.close()
@@ -162,12 +160,13 @@ class ProxyForward(ProxyDirect):
             response.header_sended = True
             request.trans_len = [0, 0]
 
-            request.timeout.cancel()
-            # request.timeout = eventTimeout(socks_timeout, pyweb.TimeoutError)
-            th = spawn(self.trans_loop, request.sock, sock,
-                       request.trans_len, 0)
+            pyweb.bus.unset_timeout(request.timeout)
+            request.timeout = pyweb.bus.set_timeout(socks_timeout,
+                                                    basehttp.TimeoutError)
+            gr = greenlet(self.trans_loop)
+            gr.switch(request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            th.wait()
+            while gr: gr.switch()
         response.body_sended, response.connection = True, False
         return response
 
@@ -183,7 +182,7 @@ class ProxySocks(ProxyDirect):
 
     def __init__(self, hostname, port, max_size = 20):
         self.hostname, self.port = hostname, port
-        self.pool = eventlet.pools.TokenPool(max_size = max_size)
+        self.pool = pyweb.TokenPool(max_size)
 
     @contextmanager
     def item(self):

@@ -5,7 +5,7 @@
 import socket
 import struct
 import eventlet.pools
-from pyweb import EventletClient
+from pyweb import EpollSocket
 
 PROXY_TYPE_SOCKS4 = 1
 PROXY_TYPE_SOCKS5 = 2
@@ -40,7 +40,7 @@ class Socks5AuthError(GeneralProxyError):
     def __init__(self, *params):
         super(Socks5AuthError, self).__init__(*params)
 
-class SocksClient(EventletClient):
+class SocksClient(EpollSocket):
 
     def socks5_auth(self, username, password):
         if username is None or password is None: self.sendall("\x05\x01\x00")
