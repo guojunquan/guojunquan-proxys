@@ -101,8 +101,9 @@ class ProxyDirect(ProxyBase):
             request.trans_len = [0, 0]
             pyweb.bus.unset_timeout(request.timeout)
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
-                                                    basehttp.TimeoutError)
+                                                    pyweb.TimeoutError)
             gr = greenlet(self.trans_loop)
+            ebus.bus.next_job(greenlet.getcurrent())
             gr.switch(request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
             while gr: gr.switch()
@@ -162,8 +163,9 @@ class ProxyForward(ProxyDirect):
 
             pyweb.bus.unset_timeout(request.timeout)
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
-                                                    basehttp.TimeoutError)
+                                                    pyweb.TimeoutError)
             gr = greenlet(self.trans_loop)
+            ebus.bus.next_job(greenlet.getcurrent())
             gr.switch(request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
             while gr: gr.switch()
