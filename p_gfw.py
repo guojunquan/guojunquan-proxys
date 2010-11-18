@@ -113,7 +113,7 @@ class DispatchGFW(object):
     def action_status(self, request):
         response = request.make_response()
         info = {'working': self.working, 'dtnow': datetime.datetime.now()}
-        self.tpl_status.render_res(response, info)
+        response.append_body(self.tpl_status.render(info))
         response.connection = False
         return response
     url_map['/status'] = action_status
@@ -122,7 +122,7 @@ class DispatchGFW(object):
     def action_gfwlist(self, request):
         response = request.make_response()
         info = {'gfwlist': self.gfw.getlist(),}
-        self.tpl_gfwlist.render_res(response, info)
+        response.append_body(self.tpl_gfwlist.render(info))
         response.connection = False
         return response
     url_map['/gfwlist'] = action_gfwlist
