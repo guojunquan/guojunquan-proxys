@@ -103,10 +103,9 @@ class ProxyDirect(ProxyBase):
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
                                                     pyweb.TimeoutError)
             gr = greenlet(self.trans_loop)
-            ebus.bus.next_job(greenlet.getcurrent())
-            gr.switch(request.sock, sock, request.trans_len, 0)
+            pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while gr: gr.switch()
+            while gr: pyweb.bus.switch()
         response.body_sended, response.connection = True, False
         return response
     def trans_loop(self, s1, s2, counter, num):
@@ -115,6 +114,7 @@ class ProxyDirect(ProxyBase):
                 counter[num] += len(d)
                 s2.sendall(d)
         except EOFError, socket.error: pass
+        except KeyboardInterrupt: raise
         except: logging.error(''.join(traceback.format_exc()))
 
     def do_http(self, request):
@@ -165,10 +165,9 @@ class ProxyForward(ProxyDirect):
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
                                                     pyweb.TimeoutError)
             gr = greenlet(self.trans_loop)
-            ebus.bus.next_job(greenlet.getcurrent())
-            gr.switch(request.sock, sock, request.trans_len, 0)
+            pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while gr: gr.switch()
+            while gr: pyweb.bus.switch()
         response.body_sended, response.connection = True, False
         return response
 
