@@ -105,7 +105,7 @@ class ProxyDirect(ProxyBase):
             gr = greenlet(self.trans_loop)
             pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while gr: pyweb.bus.switch()
+            while gr: pyweb.bus.schedule()
         response.body_sended, response.connection = True, False
         return response
     def trans_loop(self, s1, s2, counter, num):
@@ -167,7 +167,7 @@ class ProxyForward(ProxyDirect):
             gr = greenlet(self.trans_loop)
             pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while gr: pyweb.bus.switch()
+            while gr: pyweb.bus.schedule()
         response.body_sended, response.connection = True, False
         return response
 
