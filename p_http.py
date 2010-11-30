@@ -102,20 +102,19 @@ class ProxyDirect(ProxyBase):
             pyweb.bus.unset_timeout(request.timeout)
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
                                                     pyweb.TimeoutError)
-            gr = greenlet(self.trans_loop)
-            pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
+            gr = pyweb.bus.fork_gr(self.trans_loop, request.sock, sock,
+                                   request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while not gr.dead: pyweb.bus.schedule()
+            pyweb.bus.wait_for_gr(gr)
         response.body_sended, response.connection = True, False
         return response
+
     def trans_loop(self, s1, s2, counter, num):
         try:
             for d in s1.datas():
                 counter[num] += len(d)
                 s2.sendall(d)
         except EOFError, socket.error: pass
-        except KeyboardInterrupt: raise
-        except: logging.error(''.join(traceback.format_exc()))
 
     def do_http(self, request):
         request.recv_body()
@@ -164,10 +163,10 @@ class ProxyForward(ProxyDirect):
             pyweb.bus.unset_timeout(request.timeout)
             request.timeout = pyweb.bus.set_timeout(socks_timeout,
                                                     pyweb.TimeoutError)
-            gr = greenlet(self.trans_loop)
-            pyweb.bus.next_job(gr, request.sock, sock, request.trans_len, 0)
+            gr = pyweb.bus.fork_gr(self.trans_loop, request.sock, sock,
+                                   request.trans_len, 0)
             self.trans_loop(sock, request.sock, request.trans_len, 1)
-            while not gr.dead: pyweb.bus.schedule()
+            pyweb.bus.wait_for_gr(gr)
         response.body_sended, response.connection = True, False
         return response
 
