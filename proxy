@@ -15,8 +15,8 @@ dis.add_sock(ProxySocks('localhost', 7777))
 
 def main(daemon = False):
     access_file = open('access.txt', 'a')
-    pyweb.ApacheLog(access_file).set_weblog()
-    logging.basicConfig(level = logging.INFO, filename = 'error.txt')
+    pyweb.set_weblog(access_file)
+    pyweb.set_log('error.txt')
     serve = pyweb.HttpServer(dis)
     serve.listen(port = 8132)
     if daemon:

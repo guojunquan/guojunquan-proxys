@@ -4,7 +4,7 @@
 # @author: shell.xu
 import socket
 import struct
-import eventlet.pools
+#import eventlet.pools
 from pyweb import EpollSocket
 
 PROXY_TYPE_SOCKS4 = 1
@@ -125,13 +125,13 @@ class SocksClient(EpollSocket):
             self.close()
             raise
 
-class SocksClientPool(eventlet.pools.Pool):
+# class SocksClientPool(eventlet.pools.Pool):
 
-    def __init__(self, host, port, max_size):
-        super(SocksClientPool, self).__init__(max_size = max_size)
-        self.sockaddr = (host, port)
+#     def __init__(self, host, port, max_size):
+#         super(SocksClientPool, self).__init__(max_size = max_size)
+#         self.sockaddr = (host, port)
 
-    def create(self):
-        sock = SocksClient()
-        sock.connect(self.sockaddr[0], self.sockaddr[1])
-        return sock
+#     def create(self):
+#         sock = SocksClient()
+#         sock.connect(self.sockaddr[0], self.sockaddr[1])
+#         return sock
