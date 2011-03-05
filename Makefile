@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
+PROJ_NAME=pywebproxy
 PYTHON = /usr/bin/python
 
 INSTALL		= /usr/bin/install
@@ -15,12 +16,22 @@ SHAREDIR	= $(DESTDIR)$(prefix)/share
 
 all: build
 
+build-deb: build
+	dpkg-buildpackage -rfakeroot
+
 build:
 
 clean:
 	rm -f *.pyc *.pyo
+	rm -rf build
+	rm -f python-build-stamp*
+	rm -rf debian/python-$(PROJ_NAME)
+	rm -f debian/python-$(PROJ_NAME)*
+	rm -f debian/pycompat
+	rm -rf debian/python-module-stampdir
 
 install-bin: build
+	$(INSTALL_BIN) -d $(SHAREDIR)
 	for file in $(INSTALL_OBJS);\
 	do \
 		$(INSTALL_BIN) $$file $(SHAREDIR); \
@@ -34,5 +45,5 @@ install-etc:
 	$(INSTALL_BIN) -d $(ETCDIR)
 	$(INSTALL_DATA) gfw $(ETCDIR)/gfw
 
-install: install-init install-etc install -bin
+install: install-init install-etc install-bin
 
