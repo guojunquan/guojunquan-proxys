@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
-PROJ_NAME=pywebproxy
-PYTHON = /usr/bin/python
+PROJ_NAME	= pywebproxy
+PYTHON 		= /usr/bin/python
 
 INSTALL		= /usr/bin/install
 INSTALL_BIN	= $(INSTALL) -m 755
@@ -9,7 +9,6 @@ INSTALL_DATA	= $(INSTALL) -m 644
 INSTALL_OBJS	= cgi.py http_hoh.py p_gfw.py p_http.py socks.py run
 
 prefix		= /usr
-BINDIR		= $(DESTDIR)$(prefix)/bin
 ETCDIR		= $(DESTDIR)/etc/pywebproxy
 SHAREDIR	= $(DESTDIR)$(prefix)/share/pywebproxy
 LOGDIR		= $(DESTDIR)/var/log/pywebproxy
