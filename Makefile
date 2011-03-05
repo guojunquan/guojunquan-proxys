@@ -6,13 +6,13 @@ PYTHON = /usr/bin/python
 INSTALL		= /usr/bin/install
 INSTALL_BIN	= $(INSTALL) -m 755
 INSTALL_DATA	= $(INSTALL) -m 644
-INSTALL_OBJS	= cgi.py http_hoh.py p_gfw.py p_hoh.py p_http.py socks.py
+INSTALL_OBJS	= cgi.py http_hoh.py p_gfw.py p_http.py socks.py run
 
 prefix		= /usr
 BINDIR		= $(DESTDIR)$(prefix)/bin
 ETCDIR		= $(DESTDIR)/etc/pywebproxy
-INITDIR		= $(DESTDIR)/etc/init.d
-SHAREDIR	= $(DESTDIR)$(prefix)/share
+SHAREDIR	= $(DESTDIR)$(prefix)/share/pywebproxy
+LOGDIR		= $(DESTDIR)/var/log/pywebproxy
 
 all: build
 
@@ -37,13 +37,7 @@ install-bin: build
 		$(INSTALL_BIN) $$file $(SHAREDIR); \
 	done;
 
-install-init:
-	$(INSTALL_BIN) -d $(INITDIR)
-	$(INSTALL_DATA) debian/init.d $(INITDIR)/pywebproxy
-
-install-etc:
+install:  install-bin
 	$(INSTALL_BIN) -d $(ETCDIR)
 	$(INSTALL_DATA) gfw $(ETCDIR)/gfw
-
-install: install-init install-etc install-bin
-
+	$(INSTALL_BIN) -d $(LOGDIR)

@@ -19,7 +19,7 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-	update-rc.d -f pywebproxy remove
+	update-rc.d pywebproxy remove
     ;;
 
     failed-upgrade)

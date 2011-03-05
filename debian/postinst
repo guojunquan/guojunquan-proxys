@@ -20,7 +20,7 @@ set -e
 
 case "$1" in
     configure)
-	update-rc.d -f pywebproxy defaults
+	update-rc.d pywebproxy defaults
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

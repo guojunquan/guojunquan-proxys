@@ -2,7 +2,9 @@ syntax: glob
 
 *.lint
 pyweb*
-*.txt
+access
+error
+supervise
 *.elc
 *.pyc
 *.pyo

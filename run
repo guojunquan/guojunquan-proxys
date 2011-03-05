@@ -1,0 +1,38 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+'''
+@date: 2010-06-04
+@author: shell.xu
+'''
+import os
+import sys
+import socks
+import logging
+import pyweb
+from os import path
+
+from p_gfw import DispatchGFW
+from p_http import ProxyDirect, ProxyForward, ProxySocks
+
+def set_log():
+    prefix = '/var/log/pywebproxy'
+    if not os.access(prefix, os.W_OK): prefix = ''
+    access_file = open(path.join(prefix, 'access'), 'a')
+    pyweb.set_weblog(access_file)
+    pyweb.set_log(path.join(prefix, 'error'))
+
+def setup_serve():
+    if path.exists('gfw'): gfwpath = 'gfw'
+    elif path.exists('/etc/pywebproxy/gfw'): gfwpath = '/etc/pywebproxy/gfw'
+    else: raise Exception
+    dis = DispatchGFW(ProxyDirect(), gfwpath = gfwpath)
+    dis.add_sock(ProxySocks('localhost', 7777))
+    serve = pyweb.HttpServer(dis)
+    serve.listen(port = 8132)
+    return serve
+
+if __name__ == '__main__':
+    set_log()
+    serve = setup_serve()
+    try: serve.run()
+    except KeyboardInterrupt: print 'exit.'

@@ -1,4 +1,4 @@
-Source: python-pywebproxy
+Source: pywebproxy
 Section: python
 Priority: extra
 Maintainer: Shell Xu <shell909090@gmail.com>
@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 7)
 Standards-Version: 3.9.1
 Homepage: http://code.google.com/p/pywebproxy/
 
-Package: python-pywebproxy
+Package: pywebproxy
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-pyweb(>= 2.0)
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-pyweb(>= 2.0), daemontools(>= 1:0.76-3)
 Description: proxy based on pyweb
  Proxy based on pyweb, can define some domains and use proxy automatically.
